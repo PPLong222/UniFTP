@@ -8,6 +8,12 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -36,6 +42,8 @@ kotlin {
 
             implementation(libs.koin.core)
             implementation(libs.koin.androidx.compose)
+
+            implementation(libs.androidx.room.sqlite.wrapper)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -51,6 +59,9 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.core)
+
+            implementation(libs.androidx.sqlite.bundled)
+            implementation(libs.androidx.room.runtime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -91,6 +102,11 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+
+    add("kspAndroid", libs.androidx.room.compiler)
+    add("kspIosArm64", libs.androidx.room.compiler)
+    add("kspIosSimulatorArm64", libs.androidx.room.compiler)
+    add("kspJvm", libs.androidx.room.compiler)
 }
 
 compose.desktop {
