@@ -1,0 +1,15 @@
+# Package name for generated bindings
+package = libssh2
+
+# 头文件
+headers = libssh2/libssh2.h libssh2/libssh2_sftp.h libssh2/libssh2_publickey.h
+headerFilter = libssh2/**
+compilerOpts = -I/Users/luke/AndroidStudioProjects/UniFTP/composeApp/src/ios-libs/include
+
+# Link static libraries directly
+linkerOpts = \
+  /Users/luke/AndroidStudioProjects/UniFTP/composeApp/src/ios-libs/Frameworks/libssh2.xcframework/ios-arm64_x86_64-simulator/libssh2.a \
+  /Users/luke/AndroidStudioProjects/UniFTP/composeApp/src/ios-libs/Frameworks/mbedtls.xcframework/ios-arm64_x86_64-simulator/libmbedtls.a \
+  /Users/luke/AndroidStudioProjects/UniFTP/composeApp/src/ios-libs/Frameworks/mbedx509.xcframework/ios-arm64_x86_64-simulator/libmbedx509.a \
+  /Users/luke/AndroidStudioProjects/UniFTP/composeApp/src/ios-libs/Frameworks/mbedcrypto.xcframework/ios-arm64_x86_64-simulator/libmbedcrypto.a \
+  -lz

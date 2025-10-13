@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.github.pplong.test.TestScreen
+import com.github.pplong.test.sftptest.SFTPScreen
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -15,10 +16,14 @@ fun App() {
 
         val navController = rememberNavController()
         NavHost(
-            navController = navController, startDestination = TestScreenNav
+            navController = navController, startDestination = SFTPScreenNav
         ) {
             composable<TestScreenNav> {
                 TestScreen()
+            }
+
+            composable<SFTPScreenNav> {
+                SFTPScreen()
             }
         }
     }

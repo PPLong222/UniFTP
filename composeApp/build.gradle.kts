@@ -27,15 +27,44 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
+        // Get the architecture-specific path
+        val arch = when (iosTarget.name) {
+            "iosArm64" -> "ios-arm64"
+            "iosSimulatorArm64" -> "ios-arm64_x86_64-simulator"
+            else -> "ios-arm64"
+        }
+
+        // Configure cinterop for libssh2
+        iosTarget.compilations.getByName("main") {
+            val libssh2 by cinterops.creating {
+                // Use appropriate .def file based on target
+                definitionFile = when (iosTarget.name) {
+                    "iosArm64" -> project.file("src/nativeInterop/cinterop/libssh2_ios.def")
+                    "iosSimulatorArm64" -> project.file("src/nativeInterop/cinterop/libssh2_sim.def")
+                    else -> project.file("src/nativeInterop/cinterop/libssh2_ios.def")
+                }
+            }
+        }
+
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
-            isStatic = true
+            isStatic = false  // Use dynamic framework so libraries are embedded
+
+            // Force-link all symbols from the static libraries
+            linkerOpts(
+                "-force_load", "${project.projectDir}/src/ios-libs/Frameworks/libssh2.xcframework/$arch/libssh2.a",
+                "-force_load", "${project.projectDir}/src/ios-libs/Frameworks/mbedtls.xcframework/$arch/libmbedtls.a",
+                "-force_load", "${project.projectDir}/src/ios-libs/Frameworks/mbedx509.xcframework/$arch/libmbedx509.a",
+                "-force_load", "${project.projectDir}/src/ios-libs/Frameworks/mbedcrypto.xcframework/$arch/libmbedcrypto.a",
+                "-lz"
+            )
         }
     }
     
     jvm()
     
     sourceSets {
+        applyDefaultHierarchyTemplate()
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
@@ -70,6 +99,20 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
+        val jvmSharedMain by creating {
+            dependsOn(commonMain.get())
+            dependencies {
+//                implementation(libs.sshj)
+                implementation("com.hierynomus:sshj:0.38.0") {
+                    exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
+                    exclude(group = "org.bouncycastle", module = "bcpkix-jdk18on")
+                    exclude(group = "org.bouncycastle", module = "bcutil-jdk18on")
+                }
+                implementation(libs.eddsa)
+            }
+        }
+        androidMain.get().dependsOn(jvmSharedMain)
+        jvmMain.get().dependsOn(jvmSharedMain)
     }
 }
 
