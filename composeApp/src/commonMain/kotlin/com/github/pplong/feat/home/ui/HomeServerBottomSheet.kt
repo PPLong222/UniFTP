@@ -205,13 +205,6 @@ internal fun EditFTPServerBottomSheetContent(
 
                 CommonRequestStatus.REQUESTING ->
                     LoadingIndicator()
-//                    CircularProgressIndicator(
-//                        modifier = Modifier
-//                            .width(32.dp)
-//                            .padding(top = 12.dp),
-//                        color = MaterialTheme.colorScheme.primary,
-//                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-//                    )
 
                 CommonRequestStatus.SUCCESS -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
