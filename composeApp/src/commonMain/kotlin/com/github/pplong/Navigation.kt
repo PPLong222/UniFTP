@@ -7,3 +7,6 @@ object TestScreenNav
 
 @Serializable
 object SFTPScreenNav
+
+@Serializable
+object HomeScreenNav

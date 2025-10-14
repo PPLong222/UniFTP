@@ -4,7 +4,7 @@ import com.github.pplong.sftp.api.IUSftpClient
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 
-class SshjSftpClient: IUSftpClient {
+class TestSshjSftpClient: IUSftpClient {
     lateinit var sshClient : SSHClient
     override suspend fun connect(host: String, port: Int) {
         sshClient = SSHClient()

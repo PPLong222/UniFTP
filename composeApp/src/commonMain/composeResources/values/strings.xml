@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">My awesome app</string>
+    <string name="user">User</string>
+    <string name="port">Port</string>
+    <string name="test_connectivity">Test Connectivity</string>
+    <string name="next">Next</string>
+    <string name="test_again">Test Again</string>
+    <string name="congratulations">Congratulations!</string>
+    <string name="network_error_tip">Please check the network or ftp info.</string>
+    <string name="nickname">Nickname</string>$s
+    <string name="path_with_placeholder">Path: %1$s</string>
+    <string name="user_with_host">%1$s@%2$s</string>
+</resources>

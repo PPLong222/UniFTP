@@ -1,0 +1,129 @@
+package com.github.pplong.feat.home.viewmodel
+
+import androidx.lifecycle.viewModelScope
+import com.github.pplong.core.arch.mvi.BaseViewModel
+import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.feat.home.EditServerState
+import com.github.pplong.feat.home.HomeUiEffect
+import com.github.pplong.feat.home.HomeUiIntent
+import com.github.pplong.feat.home.HomeUiState
+import com.github.pplong.feat.home.model.FTPServerDao
+import com.github.pplong.feat.home.ui.EditConfigureState
+import com.github.pplong.feat.home.ui.EditFTPServerItem
+import com.github.pplong.feat.home.ui.toFTPServer
+import com.github.pplong.feat.home.ui.toFTPServerItem
+import com.github.pplong.sftp.FTPConfig
+import com.github.pplong.sftp.SFTPClientFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class HomeViewModel(
+    private val ftpServerDao: FTPServerDao
+) : BaseViewModel<HomeUiState, HomeUiIntent, HomeUiEffect>() {
+
+    init {
+        viewModelScope.launch {
+            loadServerList()
+        }
+    }
+
+    override fun initialState(): HomeUiState {
+        return HomeUiState()
+    }
+
+    override suspend fun handleIntent(intent: HomeUiIntent) {
+        when (intent) {
+            HomeUiIntent.DismissEditDialog -> dismissEditDialog()
+            HomeUiIntent.ShowAddServerDialog -> showAddServerDialog()
+            HomeUiIntent.TestConnectivity -> testConnectivity()
+            HomeUiIntent.NextToConfigure -> nextToConfigure()
+            is HomeUiIntent.OnChangeServerInfo -> onChangeServerInfo(intent.editServer)
+            HomeUiIntent.SaveServer -> saveServer()
+        }
+    }
+
+    // Dialog management
+    private fun dismissEditDialog() {
+        setState {
+            copy(
+                isEditDialogVisible = false,
+                editServerState = EditServerState() // Reset edit state
+            )
+        }
+    }
+
+    private fun showAddServerDialog() {
+        setState {
+            copy(
+                isEditDialogVisible = true,
+                editServerState = EditServerState() // Fresh state for new server
+            )
+        }
+    }
+
+    // Edit server logic
+    private fun onChangeServerInfo(editServer: EditFTPServerItem) {
+        setState {
+            copy(editServerState = editServerState.copy(server = editServer))
+        }
+    }
+
+    private fun nextToConfigure() {
+        setState {
+            copy(editServerState = editServerState.copy(configureState = EditConfigureState.CONFIGURING))
+        }
+    }
+
+    private fun testConnectivity() {
+        setState {
+            copy(editServerState = editServerState.copy(status = CommonRequestStatus.REQUESTING))
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val tempClient = SFTPClientFactory.create()
+            val result = tempClient.initClient(
+                FTPConfig(
+                    host = uiState.value.editServerState.server.host,
+                    username = uiState.value.editServerState.server.user,
+                    port = uiState.value.editServerState.server.port,
+                    password = uiState.value.editServerState.server.password
+                )
+            )
+            if (result) {
+                setState {
+                    copy(editServerState = editServerState.copy(status = CommonRequestStatus.SUCCESS))
+                }
+                tempClient.close()
+            } else {
+                setState {
+                    copy(editServerState = editServerState.copy(status = CommonRequestStatus.FAILED))
+                }
+            }
+        }
+    }
+
+    private fun saveServer() {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    ftpServerDao.insert(uiState.value.editServerState.server.toFTPServer())
+                }
+            }.onSuccess {
+                loadServerList()
+                dismissEditDialog()
+                sendEffect { HomeUiEffect.ServerSavedSuccessfully }
+            }.onFailure { error ->
+                sendEffect { HomeUiEffect.ShowError(error.message ?: "Failed to save server") }
+            }
+        }
+    }
+
+    private suspend fun loadServerList() {
+        withContext(Dispatchers.IO) {
+            val servers = ftpServerDao.getAll()
+            setState { copy(serverList = servers.map { it.toFTPServerItem() }) }
+        }
+    }
+}
