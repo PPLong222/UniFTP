@@ -10,10 +10,12 @@ import com.github.pplong.feat.home.HomeUiState
 import com.github.pplong.feat.home.model.FTPServerDao
 import com.github.pplong.feat.home.ui.EditConfigureState
 import com.github.pplong.feat.home.ui.EditFTPServerItem
+import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.feat.home.ui.toFTPServer
 import com.github.pplong.feat.home.ui.toFTPServerItem
-import com.github.pplong.sftp.FTPConfig
-import com.github.pplong.sftp.SFTPClientFactory
+import com.github.pplong.sftp.FTPClientManager
+import com.github.pplong.sftp.FTPGlobalSingleton
+import com.github.pplong.sftp.def.FTPConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -41,6 +43,7 @@ class HomeViewModel(
             HomeUiIntent.NextToConfigure -> nextToConfigure()
             is HomeUiIntent.OnChangeServerInfo -> onChangeServerInfo(intent.editServer)
             HomeUiIntent.SaveServer -> saveServer()
+            is HomeUiIntent.Connect -> connect(intent.server)
         }
     }
 
@@ -82,8 +85,7 @@ class HomeViewModel(
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val tempClient = SFTPClientFactory.create()
-            val result = tempClient.initClient(
+            val tempManager = FTPClientManager(
                 FTPConfig(
                     host = uiState.value.editServerState.server.host,
                     username = uiState.value.editServerState.server.user,
@@ -91,11 +93,13 @@ class HomeViewModel(
                     password = uiState.value.editServerState.server.password
                 )
             )
-            if (result) {
+
+            if (tempManager.connect()) {
+                tempManager.close()
+                
                 setState {
                     copy(editServerState = editServerState.copy(status = CommonRequestStatus.SUCCESS))
                 }
-                tempClient.close()
             } else {
                 setState {
                     copy(editServerState = editServerState.copy(status = CommonRequestStatus.FAILED))
@@ -125,5 +129,18 @@ class HomeViewModel(
             val servers = ftpServerDao.getAll()
             setState { copy(serverList = servers.map { it.toFTPServerItem() }) }
         }
+    }
+
+    private fun connect(server: FTPServerItem) {
+        val tempManager = FTPClientManager(
+            FTPConfig(
+                host = server.host,
+                username = server.user,
+                port = server.port,
+                password = server.password
+            )
+        )
+        FTPGlobalSingleton.manager = tempManager
+        sendEffect { HomeUiEffect.NavigateToBrowser }
     }
 }

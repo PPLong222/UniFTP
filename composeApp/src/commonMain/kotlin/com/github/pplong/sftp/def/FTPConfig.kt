@@ -1,4 +1,4 @@
-package com.github.pplong.sftp
+package com.github.pplong.sftp.def
 
 data class FTPConfig(
     val host: String,

@@ -10,3 +10,8 @@ object SFTPScreenNav
 
 @Serializable
 object HomeScreenNav
+
+
+@Serializable
+object BrowseScreenNav
+

@@ -1,16 +1,40 @@
 package com.github.pplong.sftp
 
-import kotlinx.cinterop.*
-import libssh2.*
+import com.github.pplong.sftp.def.FTPConfig
+import kotlinx.cinterop.CPointer
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.convert
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.reinterpret
+import kotlinx.cinterop.sizeOf
+import libssh2.LIBSSH2_SESSION
+import libssh2.LIBSSH2_SFTP
+import libssh2.SSH_DISCONNECT_BY_APPLICATION
+import libssh2.libssh2_exit
+import libssh2.libssh2_init
+import libssh2.libssh2_session_disconnect_ex
+import libssh2.libssh2_session_free
+import libssh2.libssh2_session_handshake
+import libssh2.libssh2_session_init_ex
+import libssh2.libssh2_sftp_init
+import libssh2.libssh2_sftp_shutdown
+import libssh2.libssh2_userauth_password_ex
 import platform.darwin.inet_pton
-import platform.posix.*
+import platform.posix.AF_INET
+import platform.posix.SOCK_STREAM
+import platform.posix.close
+import platform.posix.connect
+import platform.posix.sockaddr_in
+import platform.posix.socket
 
-class Libssh2SftpBaseClient: IBaseFTPClient {
+open class Libssh2SftpBaseClient: IBaseFTPClient {
     @OptIn(ExperimentalForeignApi::class)
-    private var session: CPointer<LIBSSH2_SESSION>? = null
+    protected var session: CPointer<LIBSSH2_SESSION>? = null
     @OptIn(ExperimentalForeignApi::class)
-    private var sftp: CPointer<LIBSSH2_SFTP>? = null
-    private var sock: Int = -1
+    protected var sftp: CPointer<LIBSSH2_SFTP>? = null
+    protected var sock: Int = -1
 
     // Convert host byte order to network byte order (big-endian)
     private fun htons(port: UShort): UShort {

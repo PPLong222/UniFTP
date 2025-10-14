@@ -1,3 +1,4 @@
+import com.github.pplong.feat.browse.viewmodel.BrowseViewModel
 import com.github.pplong.feat.home.viewmodel.HomeViewModel
 import com.github.pplong.test.TestViewModel
 import com.github.pplong.test.sftptest.SFTPTestViewModel
@@ -10,4 +11,6 @@ actual val viewModelModule: Module = module {
     factory { SFTPTestViewModel(get()) }
 
     factory { HomeViewModel(get()) }
+
+    factory { BrowseViewModel() }
 }

@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.github.pplong.feat.browse.ui.BrowseScreen
 import com.github.pplong.feat.home.ui.HomeScreen
 import com.github.pplong.test.TestScreen
 import com.github.pplong.test.sftptest.SFTPScreen
@@ -30,7 +31,11 @@ fun App() {
             }
 
             composable<HomeScreenNav> {
-                HomeScreen()
+                HomeScreen(navController)
+            }
+
+            composable<BrowseScreenNav> {
+                BrowseScreen()
             }
         }
     }

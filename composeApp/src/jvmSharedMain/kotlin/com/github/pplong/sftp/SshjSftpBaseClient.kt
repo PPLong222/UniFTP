@@ -1,12 +1,13 @@
 package com.github.pplong.sftp
 
+import com.github.pplong.sftp.def.FTPConfig
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.StatefulSFTPClient
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 
-class SshjSftpBaseClient: IBaseFTPClient {
-    lateinit var ssh: SSHClient
-    lateinit var sftp: StatefulSFTPClient
+open class SshjSftpBaseClient : IBaseFTPClient {
+    protected lateinit var ssh: SSHClient
+    protected lateinit var sftp: StatefulSFTPClient
 
     override suspend fun initClient(config: FTPConfig): Boolean {
         return try {
@@ -23,7 +24,28 @@ class SshjSftpBaseClient: IBaseFTPClient {
     }
 
     override suspend fun close() {
-        sftp.close()
-        ssh.close()
+        if (::sftp.isInitialized) {
+            sftp.close()
+        }
+        if (::ssh.isInitialized) {
+            ssh.close()
+        }
+    }
+
+    /**
+     * Get the current working directory path
+     * @return The current working directory path, or null if not available
+     */
+    protected fun getCurrentPath(): String? {
+        return try {
+            if (::sftp.isInitialized) {
+                sftp.canonicalize(".")
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }

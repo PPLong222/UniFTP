@@ -21,6 +21,9 @@ data class HomeUiState(
 ) : UiState
 
 sealed class HomeUiIntent : UiIntent {
+    // Function
+    data class Connect(val server: FTPServerItem) : HomeUiIntent()
+
     // Dialog management
     data object DismissEditDialog : HomeUiIntent()
     data object ShowAddServerDialog : HomeUiIntent()
@@ -35,4 +38,6 @@ sealed class HomeUiIntent : UiIntent {
 sealed class HomeUiEffect : UiEffect {
     data object ServerSavedSuccessfully : HomeUiEffect()
     data class ShowError(val message: String) : HomeUiEffect()
+
+    data object NavigateToBrowser : HomeUiEffect()
 }

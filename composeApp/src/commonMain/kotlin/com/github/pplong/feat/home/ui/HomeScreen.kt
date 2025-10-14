@@ -26,6 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
+import com.github.pplong.BrowseScreenNav
 import com.github.pplong.feat.home.HomeUiEffect
 import com.github.pplong.feat.home.HomeUiIntent
 import com.github.pplong.feat.home.viewmodel.HomeViewModel
@@ -40,20 +42,18 @@ import uniftp.composeapp.generated.resources.user_with_host
 
 @Preview
 @Composable
-fun HomeScreen() {
+fun HomeScreen(navController: NavHostController) {
     val viewModel = koinViewModel<HomeViewModel>()
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
-                is HomeUiEffect.ServerSavedSuccessfully -> {
-
+                is HomeUiEffect.NavigateToBrowser -> {
+                    navController.navigate(BrowseScreenNav)
                 }
 
-                is HomeUiEffect.ShowError -> {
-
-                }
+                else -> {}
             }
         }
     }
@@ -139,6 +139,7 @@ fun HostItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
                         onClick = {
+                            onIntent(HomeUiIntent.Connect(server))
                         },
                         contentPadding = PaddingValues(0.dp),
                         shape = RoundedCornerShape(8.dp),
@@ -146,7 +147,6 @@ fun HostItem(
                             .height(36.dp)
                             .width(48.dp)
                     ) {
-//                        Icon(imageVector = Icons.AutoMirrored.Default.ArrowForward, null)
                     }
                 }
 
