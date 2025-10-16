@@ -4,6 +4,13 @@ enum class BrowseToolbarStatus {
     STANDARD,
     SELECTED
 }
+
+sealed class BrowseFileLoadingStatus {
+    data object None: BrowseFileLoadingStatus()
+    data object Failed : BrowseFileLoadingStatus()
+    data class Loading(val percent: Double) : BrowseFileLoadingStatus()
+    data object Success : BrowseFileLoadingStatus()
+}
 enum class BrowseToolbarBarAction {
     REFRESH,
     SEARCH,

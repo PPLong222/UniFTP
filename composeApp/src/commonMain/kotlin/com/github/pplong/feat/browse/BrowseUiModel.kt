@@ -1,5 +1,7 @@
 package com.github.pplong.feat.browse
 
+import com.github.pplong.feat.browse.ui.BrowseFileLoadingStatus
+
 data class FTPFileUiModel(
     val name: String,
     val path: String,
@@ -10,4 +12,10 @@ data class FTPFileUiModel(
     val permissions: String? = null,
     val owner: String? = null,
     val group: String? = null
+)
+
+data class FTPFileSelectableUiModel(
+    val file: FTPFileUiModel,
+    val select: Boolean = false,
+    val loadingStatus: BrowseFileLoadingStatus = BrowseFileLoadingStatus.None
 )

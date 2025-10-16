@@ -9,7 +9,7 @@ import com.github.pplong.feat.home.ui.FTPServerItem
 data class BrowseUiState(
     val path: String = "",
     val server: FTPServerItem = FTPServerItem(),
-    val fileList: List<FTPFileUiModel> = emptyList(),
+    val fileList: List<FTPFileSelectableUiModel> = emptyList(),
     val requestStatus: CommonRequestStatus = CommonRequestStatus.INITIAL,
     val toolbarStatus: BrowseToolbarStatus = BrowseToolbarStatus.STANDARD
 ) : UiState
@@ -21,4 +21,5 @@ sealed class BrowseUiIntent : UiIntent {
 
     // Appbar
     data class ChangeBrowseMode(val appbarStatus: BrowseToolbarStatus): BrowseUiIntent()
+    data class SelectFile(val file: FTPFileUiModel) : BrowseUiIntent()
 }

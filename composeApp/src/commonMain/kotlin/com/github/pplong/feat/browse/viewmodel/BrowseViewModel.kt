@@ -4,6 +4,8 @@ import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
+import com.github.pplong.feat.browse.FTPFileSelectableUiModel
+import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.browse.toFTPFileUiModel
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.home.ui.FTPServerItem
@@ -26,7 +28,8 @@ class BrowseViewModel(
                 return@launch
             }
             val curPath = manager.pwd()
-            val curFileList = manager.list(curPath).map { it.toFTPFileUiModel() }
+            val curFileList =
+                manager.list(curPath).map { FTPFileSelectableUiModel(file = it.toFTPFileUiModel()) }
             setState {
                 copy(
                     path = curPath,
@@ -47,6 +50,8 @@ class BrowseViewModel(
             is BrowseUiIntent.Jump -> jump(intent.path)
             BrowseUiIntent.Back -> back()
             is BrowseUiIntent.ChangeBrowseMode -> changeBrowseMode(intent.appbarStatus)
+            is BrowseUiIntent.SelectFile -> selectFile(intent.file)
+
         }
     }
 
@@ -57,7 +62,8 @@ class BrowseViewModel(
     private fun jump(path: String) {
         setState { copy(requestStatus = CommonRequestStatus.REQUESTING) }
         viewModelScope.launch(Dispatchers.IO) {
-            val curFileList = manager.list(path).map { it.toFTPFileUiModel() }
+            val curFileList =
+                manager.list(path).map { FTPFileSelectableUiModel(file = it.toFTPFileUiModel()) }
             setState {
                 copy(
                     path = path,
@@ -80,6 +86,20 @@ class BrowseViewModel(
     private fun changeBrowseMode(appbarStatus: BrowseToolbarStatus) {
         setState {
             copy(toolbarStatus = if (appbarStatus == BrowseToolbarStatus.STANDARD) BrowseToolbarStatus.SELECTED else BrowseToolbarStatus.STANDARD)
+        }
+    }
+
+    private fun selectFile(file: FTPFileUiModel) {
+        setState {
+            copy(
+                fileList = fileList.map { fileModel ->
+                    if (fileModel.file == file) {
+                        fileModel.copy(select = !(fileModel.select))
+                    } else {
+                        fileModel
+                    }
+                }
+            )
         }
     }
 }

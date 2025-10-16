@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
+import com.github.pplong.feat.browse.FTPFileSelectableUiModel
 import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.jetbrains.compose.resources.painterResource
@@ -36,9 +38,11 @@ import uniftp.composeapp.generated.resources.unselect
 
 @Composable
 fun FTPFileInfo(
-    file: FTPFileUiModel,
-    onIntent: (BrowseUiIntent) -> Unit
+    fileUiModel: FTPFileSelectableUiModel,
+    onIntent: (BrowseUiIntent) -> Unit,
+    appbarStatus: BrowseToolbarStatus
 ) {
+    val file = fileUiModel.file
     ListItem(
         leadingContent = {
             if (file.isDirectory) {
@@ -75,6 +79,16 @@ fun FTPFileInfo(
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
+            }
+        },
+        trailingContent = {
+            if (appbarStatus == BrowseToolbarStatus.SELECTED) {
+                Checkbox(
+                    checked = fileUiModel.select,
+                    onCheckedChange = {
+                        onIntent(BrowseUiIntent.SelectFile(file))
+                    }
+                )
             }
         },
         modifier = Modifier.clickable {
@@ -119,7 +133,11 @@ fun BrowseMainContent(
 fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
     LazyColumn {
         items(uiState.fileList) { file ->
-            FTPFileInfo(file, onIntent)
+            FTPFileInfo(
+                file,
+                onIntent,
+                uiState.toolbarStatus,
+            )
         }
     }
 }
@@ -178,9 +196,10 @@ fun PreviewBrowseTopBar() {
 @Composable
 @Preview
 fun PreviewBrowseContent() {
-    val list = mutableListOf<FTPFileUiModel>()
+    val list = mutableListOf<FTPFileSelectableUiModel>()
     repeat(10) {
         list.add(
+            FTPFileSelectableUiModel(
             FTPFileUiModel(
                 name = "TestFile",
                 path = "/test/TestFile",
@@ -191,6 +210,7 @@ fun PreviewBrowseContent() {
                 permissions = "0001",
                 owner = "root",
                 group = "root",
+            )
             )
         )
     }
@@ -216,17 +236,20 @@ fun PreviewBrowseContent() {
 @Preview
 fun PreviewFTPFileInfo() {
     FTPFileInfo(
-        file = FTPFileUiModel(
-            name = "TestFile",
-            path = "/test/TestFile",
-            parentPath = "/test",
-            isDirectory = false,
-            size = 1024,
-            modifiedTime = 0,
-            permissions = "0001",
-            owner = "root",
-            group = "root",
+        fileUiModel = FTPFileSelectableUiModel(
+            FTPFileUiModel(
+                name = "TestFile",
+                path = "/test/TestFile",
+                parentPath = "/test",
+                isDirectory = false,
+                size = 1024,
+                modifiedTime = 0,
+                permissions = "0001",
+                owner = "root",
+                group = "root",
+            )
         ),
-        {}
+        {},
+        appbarStatus = BrowseToolbarStatus.SELECTED
     )
 }
