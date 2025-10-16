@@ -29,6 +29,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
+import uniftp.composeapp.generated.resources.ic_file
 import uniftp.composeapp.generated.resources.ic_folder
 import uniftp.composeapp.generated.resources.select
 import uniftp.composeapp.generated.resources.unselect
@@ -40,11 +41,15 @@ fun FTPFileInfo(
 ) {
     ListItem(
         leadingContent = {
-            Icon(
-                painter = painterResource(Res.drawable.ic_folder),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp)
-            )
+            if (file.isDirectory) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_folder),
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp)
+                )
+            } else {
+                FileIcon(file.name)
+            }
         },
         headlineContent = {
             Text(
@@ -73,8 +78,19 @@ fun FTPFileInfo(
             }
         },
         modifier = Modifier.clickable {
-            onIntent(BrowseUiIntent.Jump(file.path))
+            if (file.isDirectory) {
+                onIntent(BrowseUiIntent.Jump(file.path))
+            }
         }
+    )
+}
+
+@Composable
+fun FileIcon(fileName: String) {
+    Icon(
+        painter = painterResource(Res.drawable.ic_file),
+        contentDescription = null,
+        modifier = Modifier.size(48.dp)
     )
 }
 
