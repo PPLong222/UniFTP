@@ -96,6 +96,8 @@ kotlin {
 
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.androidx.room.runtime)
+
+            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

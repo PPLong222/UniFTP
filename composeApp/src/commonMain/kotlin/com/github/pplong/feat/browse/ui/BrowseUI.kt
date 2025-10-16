@@ -2,8 +2,10 @@ package com.github.pplong.feat.browse.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
@@ -22,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.core.utils.DateUtil
+import com.github.pplong.core.utils.FileUtil
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
 import com.github.pplong.feat.browse.FTPFileSelectableUiModel
@@ -58,7 +62,7 @@ fun FTPFileInfo(
         headlineContent = {
             Text(
                 file.name,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -66,19 +70,20 @@ fun FTPFileInfo(
         },
         supportingContent = {
             Row {
-                Text(
-                    "Date: ${file.modifiedTime}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
                 if (!file.isDirectory) {
                     Text(
-                        "Size: ${file.size}",
+                        FileUtil.getFileSize(file.size),
                         modifier = Modifier.padding(start = 4.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                    Spacer(Modifier.width(8.dp))
                 }
+                Text(
+                    DateUtil.getFormatDate(file.modifiedTime),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             }
         },
         trailingContent = {
