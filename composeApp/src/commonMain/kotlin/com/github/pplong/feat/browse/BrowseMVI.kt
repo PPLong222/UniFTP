@@ -3,13 +3,22 @@ package com.github.pplong.feat.browse
 import com.github.pplong.core.arch.mvi.UiIntent
 import com.github.pplong.core.arch.mvi.UiState
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
+import com.github.pplong.feat.home.ui.FTPServerItem
 
 data class BrowseUiState(
     val path: String = "",
+    val server: FTPServerItem = FTPServerItem(),
     val fileList: List<FTPFileUiModel> = emptyList(),
-    val requestStatus: CommonRequestStatus = CommonRequestStatus.INITIAL
+    val requestStatus: CommonRequestStatus = CommonRequestStatus.INITIAL,
+    val toolbarStatus: BrowseToolbarStatus = BrowseToolbarStatus.STANDARD
 ) : UiState
 
 sealed class BrowseUiIntent : UiIntent {
     data object Refresh : BrowseUiIntent()
+    data class Jump(val path: String) : BrowseUiIntent()
+    data object Back : BrowseUiIntent()
+
+    // Appbar
+    data class ChangeBrowseMode(val appbarStatus: BrowseToolbarStatus): BrowseUiIntent()
 }

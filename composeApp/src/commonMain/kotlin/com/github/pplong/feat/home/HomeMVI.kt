@@ -39,5 +39,5 @@ sealed class HomeUiEffect : UiEffect {
     data object ServerSavedSuccessfully : HomeUiEffect()
     data class ShowError(val message: String) : HomeUiEffect()
 
-    data object NavigateToBrowser : HomeUiEffect()
+    data class NavigateToBrowser(val server: FTPServerItem) : HomeUiEffect()
 }

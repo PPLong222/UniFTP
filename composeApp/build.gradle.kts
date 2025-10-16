@@ -85,9 +85,12 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.material3)
+            implementation("org.jetbrains.compose.ui:ui-backhandler:1.9.1")
 
             api(libs.koin.core)
             implementation(libs.koin.compose)
+            implementation("io.insert-koin:koin-compose-viewmodel-navigation:4.1.1")
+            implementation("io.insert-koin:koin-compose-viewmodel:4.1.1")
             implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.core)
 

@@ -10,4 +10,6 @@
     <string name="nickname">Nickname</string>$s
     <string name="path_with_placeholder">Path: %1$s</string>
     <string name="user_with_host">%1$s@%2$s</string>
+    <string name="select">Select</string>
+    <string name="unselect">Unselect</string>
 </resources>

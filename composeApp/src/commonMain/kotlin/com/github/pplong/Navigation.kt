@@ -11,7 +11,6 @@ object SFTPScreenNav
 @Serializable
 object HomeScreenNav
 
-
 @Serializable
-object BrowseScreenNav
+class BrowseScreenNav(val nickname: String?, val host: String, val user: String)
 

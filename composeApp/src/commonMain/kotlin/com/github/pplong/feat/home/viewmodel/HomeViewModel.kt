@@ -141,6 +141,6 @@ class HomeViewModel(
             )
         )
         FTPGlobalSingleton.manager = tempManager
-        sendEffect { HomeUiEffect.NavigateToBrowser }
+        sendEffect { HomeUiEffect.NavigateToBrowser(server) }
     }
 }

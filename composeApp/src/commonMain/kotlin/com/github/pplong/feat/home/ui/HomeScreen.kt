@@ -31,10 +31,10 @@ import com.github.pplong.BrowseScreenNav
 import com.github.pplong.feat.home.HomeUiEffect
 import com.github.pplong.feat.home.HomeUiIntent
 import com.github.pplong.feat.home.viewmodel.HomeViewModel
-import com.github.pplong.koinViewModel
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.koin.compose.viewmodel.koinViewModel
 import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.ic_add
 import uniftp.composeapp.generated.resources.ic_server
@@ -50,7 +50,13 @@ fun HomeScreen(navController: NavHostController) {
         viewModel.uiEffect.collect { effect ->
             when (effect) {
                 is HomeUiEffect.NavigateToBrowser -> {
-                    navController.navigate(BrowseScreenNav)
+                    navController.navigate(
+                        BrowseScreenNav(
+                            effect.server.nickname,
+                            effect.server.host,
+                            effect.server.user
+                        )
+                    )
                 }
 
                 else -> {}
