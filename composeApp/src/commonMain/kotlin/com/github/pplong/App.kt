@@ -1,5 +1,6 @@
 package com.github.pplong
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.runtime.Composable
@@ -12,13 +13,14 @@ import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.feat.home.ui.HomeScreen
 import com.github.pplong.test.TestScreen
 import com.github.pplong.test.sftptest.SFTPScreen
+import com.github.pplong.ui.theme.UniFTPTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 @Preview
 fun App() {
-    MaterialExpressiveTheme {
+    UniFTPTheme {
 
         val navController = rememberNavController()
         NavHost(
