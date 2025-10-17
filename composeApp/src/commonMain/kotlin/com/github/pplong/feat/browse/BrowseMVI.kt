@@ -1,5 +1,6 @@
 package com.github.pplong.feat.browse
 
+import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.arch.mvi.UiIntent
 import com.github.pplong.core.arch.mvi.UiState
 import com.github.pplong.core.def.CommonRequestStatus
@@ -37,6 +38,11 @@ sealed class BrowseUiIntent : UiIntent {
 
     // Dialog
     data object DismissDialog : BrowseUiIntent()
+    data object ShowUploadPicker : BrowseUiIntent()
+}
+
+sealed class BrowseUiEffect : UiEffect {
+    data object ShowUploadPicker : BrowseUiEffect()
 }
 
 sealed class BrowseDialogState {

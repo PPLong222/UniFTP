@@ -3,6 +3,7 @@ import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.feat.browse.BrowseDialogState
+import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
 import com.github.pplong.feat.browse.FTPFileSelectableUiModel
@@ -61,6 +62,8 @@ class BrowseViewModel(
             BrowseUiIntent.Delete -> delete()
             BrowseUiIntent.DismissDialog -> dismissDialog()
             BrowseUiIntent.ShowDeleteDialog -> showDismissDialog()
+            BrowseUiIntent.ShowUploadPicker -> showUploadPicker()
+
         }
     }
 
@@ -268,5 +271,9 @@ class BrowseViewModel(
 
     private fun dismissDialog() {
         setState { copy(dialogState = BrowseDialogState.None) }
+    }
+
+    private fun showUploadPicker() {
+        sendEffect { BrowseUiEffect.ShowUploadPicker }
     }
 }

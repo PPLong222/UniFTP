@@ -30,7 +30,7 @@ fun BrowseToolbarBarAction.mapToUiIntent(): BrowseUiIntent {
 
 fun BrowseToolbarStatus.mapToUiIntent(): BrowseUiIntent {
     return when (this) {
-        BrowseToolbarStatus.STANDARD -> BrowseUiIntent.Upload
+        BrowseToolbarStatus.STANDARD -> BrowseUiIntent.ShowUploadPicker
         BrowseToolbarStatus.SELECTED -> BrowseUiIntent.Download
     }
 }

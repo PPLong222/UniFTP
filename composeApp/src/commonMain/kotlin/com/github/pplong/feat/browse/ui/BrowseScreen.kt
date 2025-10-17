@@ -9,6 +9,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.github.pplong.core.utils.rememberFilePicker
 import com.github.pplong.feat.browse.BrowseDialogState
+import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.koin.compose.viewmodel.koinViewModel
@@ -32,7 +34,6 @@ fun BrowseScreen(
 ) {
     val viewModel = koinViewModel<BrowseViewModel>(parameters = { parametersOf(server) })
     val state by viewModel.uiState.collectAsState()
-
     // File picker for upload
     val filePicker = rememberFilePicker { results ->
         results?.let { fileList ->
@@ -43,6 +44,16 @@ fun BrowseScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    LaunchedEffect(Unit) {
+        viewModel.uiEffect.collect { uiEffect ->
+            when (uiEffect) {
+                BrowseUiEffect.ShowUploadPicker -> {
+                    filePicker()
+                }
+            }
+        }
+    }
+
     BackHandler {
         viewModel.sendIntent(BrowseUiIntent.Back)
     }
