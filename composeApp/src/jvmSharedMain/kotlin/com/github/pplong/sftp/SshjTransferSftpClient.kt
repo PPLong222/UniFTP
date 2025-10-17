@@ -28,7 +28,7 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             // Ensure SFTP client is initialized
-            sftp = ssh.newStatefulSFTPClient()
+            val sftp = ssh.newStatefulSFTPClient()
 
             // Get file size
             val fileSize = getFileSize(remotePath)
@@ -154,7 +154,7 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             // Ensure SFTP client is initialized
-            sftp = ssh.newStatefulSFTPClient()
+            val sftp = ssh.newStatefulSFTPClient()
 
             // Get input stream from callback
             val inputStreamPair = callback.openInputStream()
@@ -244,15 +244,8 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
     }
 
     override suspend fun getFileSize(remotePath: String): Long = withContext(Dispatchers.IO) {
-        try {
-            // Ensure SFTP client is initialized
-            sftp = ssh.newStatefulSFTPClient()
-            // Get file attributes
-            val attrs = sftp.stat(remotePath)
-            return@withContext attrs.size
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return@withContext -1L
+        return@withContext ssh.newStatefulSFTPClient().use { sftp ->
+            sftp.stat(remotePath).size
         }
     }
 }

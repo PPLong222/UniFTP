@@ -8,8 +8,10 @@ import net.schmizz.sshj.xfer.FilePermission
 open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
 
     override suspend fun list(path: String): List<FTPFile> {
-        return sftp.ls(path).mapNotNull { remoteFile ->
-            convertToFTPFile(remoteFile, path)
+        return ssh.newStatefulSFTPClient().use { sftp ->
+            sftp.ls(path).mapNotNull { remoteFile ->
+                convertToFTPFile(remoteFile, path)
+            }
         }
     }
 
