@@ -18,6 +18,7 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.github.pplong.core.utils.rememberFilePicker
+import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.koin.compose.viewmodel.koinViewModel
@@ -62,16 +63,7 @@ fun BrowseScreen(
         floatingActionButton = {
             BrowseFloatingToolbar(
                 barStatus = state.toolbarStatus,
-                actionClicked = { },
-                fabClicked = { status ->
-                    if (status == BrowseToolbarStatus.SELECTED) {
-                        // Download mode
-                        viewModel.sendIntent(BrowseUiIntent.Download)
-                    } else {
-                        // Upload mode - open file picker
-                        filePicker()
-                    }
-                },
+                onIntent = viewModel::sendIntent
             )
         }
     ) { paddingValues ->
@@ -89,6 +81,18 @@ fun BrowseScreen(
             ) {
                 BrowseMainContent(state, viewModel::sendIntent)
             }
+        }
+    }
+
+    when (val dialogState = state.dialogState) {
+        BrowseDialogState.None -> {}
+        is BrowseDialogState.ConfirmDelete -> {
+            BrowseDeleteDialog(
+                { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+                dialogState,
+                { viewModel.sendIntent(BrowseUiIntent.Delete) },
+                { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+            )
         }
     }
 }

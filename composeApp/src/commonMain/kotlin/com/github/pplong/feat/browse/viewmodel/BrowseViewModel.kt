@@ -2,6 +2,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
 import com.github.pplong.feat.browse.FTPFileSelectableUiModel
@@ -57,6 +58,9 @@ class BrowseViewModel(
             BrowseUiIntent.Download -> download()
             BrowseUiIntent.Upload -> upload()
             is BrowseUiIntent.UploadFiles -> uploadFiles(intent.files)
+            BrowseUiIntent.Delete -> delete()
+            BrowseUiIntent.DismissDialog -> dismissDialog()
+            BrowseUiIntent.ShowDeleteDialog -> showDismissDialog()
         }
     }
 
@@ -73,7 +77,8 @@ class BrowseViewModel(
                 copy(
                     path = path,
                     fileList = curFileList,
-                    requestStatus = CommonRequestStatus.SUCCESS
+                    requestStatus = CommonRequestStatus.SUCCESS,
+                    dialogState = BrowseDialogState.None
                 )
             }
         }
@@ -230,5 +235,38 @@ class BrowseViewModel(
                 }
             )
         }
+    }
+
+    private fun delete() {
+        val deleteFilesPaths =
+            uiState.value.fileList.filter { it.status == BrowseFileLoadingStatus.Checked }
+                .map { it.file }
+        viewModelScope.launch(Dispatchers.IO) {
+            manager.delete(deleteFilesPaths) { removedCount ->
+                setState {
+                    copy(
+                        dialogState = BrowseDialogState.ConfirmDelete(
+                            deleteFilesPaths,
+                            removedCount
+                        )
+                    )
+                }
+                if (removedCount == deleteFilesPaths.size) {
+                    refresh()
+                }
+            }
+        }
+
+    }
+
+    private fun showDismissDialog() {
+        val deleteFiles =
+            uiState.value.fileList.filter { it.status == BrowseFileLoadingStatus.Checked }
+                .map { it.file }
+        setState { copy(dialogState = BrowseDialogState.ConfirmDelete(deleteFiles, 0)) }
+    }
+
+    private fun dismissDialog() {
+        setState { copy(dialogState = BrowseDialogState.None) }
     }
 }

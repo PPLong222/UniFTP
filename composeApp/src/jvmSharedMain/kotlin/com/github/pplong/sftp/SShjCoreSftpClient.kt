@@ -1,5 +1,6 @@
 package com.github.pplong.sftp
 
+import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.sftp.def.FTPFile
 import net.schmizz.sshj.sftp.FileMode
 import net.schmizz.sshj.sftp.RemoteResourceInfo
@@ -16,7 +17,25 @@ open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
     }
 
     override suspend fun pwd(): String {
-        return sftp.pwd()
+        return ssh.newStatefulSFTPClient().use { sftp ->
+            sftp.pwd()
+        }
+    }
+
+    override suspend fun delete(
+        deleteFiles: List<FTPFileUiModel>,
+        onProgress: (removedCount: Int) -> Unit
+    ) {
+        return ssh.newStatefulSFTPClient().use { sftp ->
+            deleteFiles.forEachIndexed { index, ftpFile ->
+                if (ftpFile.isDirectory) {
+                    sftp.rmdir(ftpFile.path)
+                } else {
+                    sftp.rm(ftpFile.path)
+                }
+                onProgress(index + 1)
+            }
+        }
     }
 
     /**

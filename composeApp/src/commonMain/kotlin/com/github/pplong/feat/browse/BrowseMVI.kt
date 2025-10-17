@@ -11,7 +11,8 @@ data class BrowseUiState(
     val server: FTPServerItem = FTPServerItem(),
     val fileList: List<FTPFileSelectableUiModel> = emptyList(),
     val requestStatus: CommonRequestStatus = CommonRequestStatus.INITIAL,
-    val toolbarStatus: BrowseToolbarStatus = BrowseToolbarStatus.STANDARD
+    val toolbarStatus: BrowseToolbarStatus = BrowseToolbarStatus.STANDARD,
+    val dialogState: BrowseDialogState = BrowseDialogState.None
 ) : UiState
 
 sealed class BrowseUiIntent : UiIntent {
@@ -26,9 +27,22 @@ sealed class BrowseUiIntent : UiIntent {
     // Toolbar
     data object Download : BrowseUiIntent()
     data object Upload : BrowseUiIntent()
+    data object ShowDeleteDialog : BrowseUiIntent()
+    data object Delete : BrowseUiIntent()
 
     // Upload with selected files
     data class UploadFiles(
         val files: List<Pair<String, String>> // Pair of (uri, fileName)
     ) : BrowseUiIntent()
+
+    // Dialog
+    data object DismissDialog : BrowseUiIntent()
+}
+
+sealed class BrowseDialogState {
+    data object None : BrowseDialogState()
+    data class ConfirmDelete(
+        val fileList: List<FTPFileUiModel>,
+        val deleteCount: Int
+    ) : BrowseDialogState()
 }

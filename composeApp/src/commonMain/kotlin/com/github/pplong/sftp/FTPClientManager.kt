@@ -209,4 +209,11 @@ class FTPClientManager(
             }
         }
     }
+
+    suspend fun delete(
+        deleteFilesPaths: List<FTPFileUiModel>,
+        onProgress: (removedCount: Int) -> Unit
+    ) {
+        coreFTPClient.delete(deleteFilesPaths, onProgress)
+    }
 }

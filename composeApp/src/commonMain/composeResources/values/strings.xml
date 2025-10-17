@@ -12,4 +12,13 @@
     <string name="user_with_host">%1$s@%2$s</string>
     <string name="select">Select</string>
     <string name="unselect">Unselect</string>
+    <string name="confirm">Confirm</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete_files">Delete Files</string>
+
+
+    <!--Dialog-->
+    <string name="remove_dialog_tip">Are you sure to remove these %1$s files?</string>
+    <string name="removing_with_placeholder">Removing: %1$s/%2$s </string>
+
 </resources>

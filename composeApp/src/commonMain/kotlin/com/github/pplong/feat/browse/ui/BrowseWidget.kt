@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.github.pplong.feat.browse.BrowseUiIntent
+import com.github.pplong.feat.browse.mapToUiIntent
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -36,6 +38,7 @@ import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.ic_arrow_downward
 import uniftp.composeapp.generated.resources.ic_arrow_upward
 import uniftp.composeapp.generated.resources.ic_create_new_folder
+import uniftp.composeapp.generated.resources.ic_delete
 import uniftp.composeapp.generated.resources.ic_path
 import uniftp.composeapp.generated.resources.ic_refresh
 
@@ -128,8 +131,7 @@ private fun buildPath(paths: List<String>, index: Int): String {
 @Composable
 fun BrowseFloatingToolbar(
     barStatus: BrowseToolbarStatus,
-    actionClicked: (BrowseToolbarBarAction) -> Unit,
-    fabClicked: (BrowseToolbarStatus) -> Unit
+    onIntent: (BrowseUiIntent) -> Unit,
 ) {
     val list =
         if (barStatus == BrowseToolbarStatus.STANDARD) standardBrowseToolbarList else fileBrowseToolBarList
@@ -143,7 +145,7 @@ fun BrowseFloatingToolbar(
                 key(action) {
                     IconButton(
                         onClick = {
-                            actionClicked(action)
+                            onIntent(action.mapToUiIntent())
                         }
                     ) {
                         Icon(
@@ -182,7 +184,7 @@ fun BrowseFloatingToolbar(
         floatingActionButton = {
             FloatingToolbarDefaults.VibrantFloatingActionButton(
                 onClick = {
-                    fabClicked(barStatus)
+                    onIntent(barStatus.mapToUiIntent())
                 },
                 content = {
                     if (barStatus == BrowseToolbarStatus.STANDARD) {
@@ -202,7 +204,7 @@ fun BrowseFloatingToolbar(
             )
         }
     )
-    
+
 }
 
 @Composable
@@ -211,7 +213,7 @@ private fun mapActionToResource(action: BrowseToolbarBarAction): Painter {
         BrowseToolbarBarAction.REFRESH -> painterResource(Res.drawable.ic_refresh)
         BrowseToolbarBarAction.SEARCH -> painterResource(Res.drawable.ic_refresh)
         BrowseToolbarBarAction.CREATE_FOLDER -> painterResource(Res.drawable.ic_create_new_folder)
-        BrowseToolbarBarAction.DELETE -> painterResource(Res.drawable.ic_refresh)
+        BrowseToolbarBarAction.DELETE -> painterResource(Res.drawable.ic_delete)
         BrowseToolbarBarAction.MOVE -> painterResource(Res.drawable.ic_refresh)
         BrowseToolbarBarAction.SHARE -> painterResource(Res.drawable.ic_refresh)
         BrowseToolbarBarAction.INFO -> painterResource(Res.drawable.ic_refresh)
