@@ -81,7 +81,6 @@ fun FTPFileInfo(
                 if (!file.isDirectory) {
                     Text(
                         FileUtil.getFileSize(file.size),
-                        modifier = Modifier.padding(start = 4.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -95,7 +94,10 @@ fun FTPFileInfo(
             }
         },
         trailingContent = {
-            AnimatedContent(targetState = fileUiModel.status::class) { target ->
+            AnimatedContent(
+                targetState = fileUiModel.status::class,
+                modifier = Modifier.size(32.dp)
+            ) { target ->
                 when (target) {
                     BrowseFileLoadingStatus.Checked::class, BrowseFileLoadingStatus.UnChecked::class -> {
                         Checkbox(
