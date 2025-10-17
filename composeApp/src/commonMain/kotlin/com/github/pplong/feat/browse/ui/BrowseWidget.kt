@@ -134,6 +134,7 @@ fun BrowseFloatingToolbar(
     val list =
         if (barStatus == BrowseToolbarStatus.STANDARD) standardBrowseToolbarList else fileBrowseToolBarList
 
+
     HorizontalFloatingToolbar(
         expanded = true,
         content = {
@@ -201,6 +202,7 @@ fun BrowseFloatingToolbar(
             )
         }
     )
+    
 }
 
 @Composable

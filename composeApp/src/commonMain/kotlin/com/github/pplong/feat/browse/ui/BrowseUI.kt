@@ -15,6 +15,7 @@ import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,15 +35,14 @@ import com.github.pplong.feat.browse.FTPFileSelectableUiModel
 import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.ic_check
+import uniftp.composeapp.generated.resources.ic_close
 import uniftp.composeapp.generated.resources.ic_data_off
 import uniftp.composeapp.generated.resources.ic_file
 import uniftp.composeapp.generated.resources.ic_folder
-import uniftp.composeapp.generated.resources.select
-import uniftp.composeapp.generated.resources.unselect
+import uniftp.composeapp.generated.resources.ic_multiple
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -94,7 +94,7 @@ fun FTPFileInfo(
         trailingContent = {
             AnimatedContent(targetState = fileUiModel.status::class) { target ->
                 when (target) {
-                    BrowseFileLoadingStatus.Checked::class,BrowseFileLoadingStatus.UnChecked::class -> {
+                    BrowseFileLoadingStatus.Checked::class, BrowseFileLoadingStatus.UnChecked::class -> {
                         Checkbox(
                             checked = fileUiModel.status == BrowseFileLoadingStatus.Checked,
                             onCheckedChange = { checked ->
@@ -102,6 +102,7 @@ fun FTPFileInfo(
                             }
                         )
                     }
+
                     BrowseFileLoadingStatus.Failed::class -> {
                         Icon(
                             painter = painterResource(Res.drawable.ic_data_off),
@@ -109,16 +110,20 @@ fun FTPFileInfo(
                             contentDescription = null
                         )
                     }
+
                     BrowseFileLoadingStatus.Loading::class -> {
-                        val percent = (fileUiModel.status as? BrowseFileLoadingStatus.Loading)?.percent ?: 0f
+                        val percent =
+                            (fileUiModel.status as? BrowseFileLoadingStatus.Loading)?.percent ?: 0f
                         CircularWavyProgressIndicator(
                             progress = { percent },
                             modifier = Modifier.size(32.dp)
                         )
                     }
+
                     BrowseFileLoadingStatus.None::class -> {
 
                     }
+
                     BrowseFileLoadingStatus.Success::class -> {
                         Icon(
                             painter = painterResource(Res.drawable.ic_check),
@@ -126,6 +131,7 @@ fun FTPFileInfo(
                             contentDescription = null
                         )
                     }
+
                     BrowseFileLoadingStatus.Waiting::class -> {
                         ContainedLoadingIndicator(modifier = Modifier.size(32.dp))
                     }
@@ -209,15 +215,18 @@ fun BrowseTopAppBar(
 
         },
         actions = {
-            Text(
-                text = stringResource(if (appbarStatus == BrowseToolbarStatus.STANDARD) Res.string.select else Res.string.unselect),
-                modifier = Modifier.clickable {
+            IconButton(
+                onClick = {
                     onIntent(BrowseUiIntent.ChangeBrowseMode(appbarStatus))
                 }
-            )
+            ) {
+                Icon(
+                    painter = painterResource(if (appbarStatus == BrowseToolbarStatus.STANDARD) Res.drawable.ic_multiple else Res.drawable.ic_close),
+                    contentDescription = null
+                )
+            }
         },
         scrollBehavior = scrollBehavior,
-        modifier = modifier.padding(end = 8.dp)
     )
 }
 
@@ -241,17 +250,17 @@ fun PreviewBrowseContent() {
     repeat(10) {
         list.add(
             FTPFileSelectableUiModel(
-            FTPFileUiModel(
-                name = "TestFile",
-                path = "/test/TestFile",
-                parentPath = "/test",
-                isDirectory = false,
-                size = 1024,
-                modifiedTime = 0,
-                permissions = "0001",
-                owner = "root",
-                group = "root",
-            )
+                FTPFileUiModel(
+                    name = "TestFile",
+                    path = "/test/TestFile",
+                    parentPath = "/test",
+                    isDirectory = false,
+                    size = 1024,
+                    modifiedTime = 0,
+                    permissions = "0001",
+                    owner = "root",
+                    group = "root",
+                )
             )
         )
     }
