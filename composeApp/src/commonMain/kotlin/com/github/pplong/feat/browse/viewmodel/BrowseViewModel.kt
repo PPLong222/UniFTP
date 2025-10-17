@@ -81,7 +81,8 @@ class BrowseViewModel(
                     path = path,
                     fileList = curFileList,
                     requestStatus = CommonRequestStatus.SUCCESS,
-                    dialogState = BrowseDialogState.None
+                    dialogState = BrowseDialogState.None,
+                    toolbarStatus = BrowseToolbarStatus.STANDARD
                 )
             }
         }

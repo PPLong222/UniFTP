@@ -70,7 +70,7 @@ fun FTPFileInfo(
         headlineContent = {
             Text(
                 file.name,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -144,7 +144,11 @@ fun FTPFileInfo(
             }
         },
         modifier = Modifier.clickable {
-            if (file.isDirectory) {
+            if (fileUiModel.status == BrowseFileLoadingStatus.UnChecked || fileUiModel.status == BrowseFileLoadingStatus.Checked) {
+                onIntent(BrowseUiIntent.SelectFile(file,
+                    fileUiModel.status != BrowseFileLoadingStatus.Checked
+                ))
+            } else if (file.isDirectory) {
                 onIntent(BrowseUiIntent.Jump(file.path))
             }
         }
