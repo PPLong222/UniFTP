@@ -8,7 +8,9 @@ import net.schmizz.sshj.xfer.FilePermission
 
 open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
 
+    // TODO: figure out why crash when jumping to file select ui
     override suspend fun list(path: String): List<FTPFile> {
+        ensureSSHConnection()
         return ssh.newStatefulSFTPClient().use { sftp ->
             sftp.ls(path).mapNotNull { remoteFile ->
                 convertToFTPFile(remoteFile, path)
@@ -17,6 +19,7 @@ open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
     }
 
     override suspend fun pwd(): String {
+        ensureSSHConnection()
         return ssh.newStatefulSFTPClient().use { sftp ->
             sftp.pwd()
         }
@@ -26,6 +29,7 @@ open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
         deleteFiles: List<FTPFileUiModel>,
         onProgress: (removedCount: Int) -> Unit
     ) {
+        ensureSSHConnection()
         return ssh.newStatefulSFTPClient().use { sftp ->
             deleteFiles.forEachIndexed { index, ftpFile ->
                 if (ftpFile.isDirectory) {
@@ -104,5 +108,11 @@ open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
         perms.append(if (permSet.contains(FilePermission.OTH_X)) 'x' else '-')
 
         return perms.toString()
+    }
+
+    private suspend fun ensureSSHConnection() {
+        if (!ssh.isConnected) {
+            initClient(config)
+        }
     }
 }

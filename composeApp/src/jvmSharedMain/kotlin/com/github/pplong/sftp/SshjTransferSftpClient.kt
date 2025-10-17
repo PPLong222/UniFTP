@@ -2,6 +2,9 @@ package com.github.pplong.sftp
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.schmizz.sshj.xfer.LocalFileFilter
+import net.schmizz.sshj.xfer.LocalSourceFile
+import java.io.InputStream
 import java.io.OutputStream
 
 /**
@@ -11,7 +14,7 @@ import java.io.OutputStream
 class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
 
     companion object {
-        private const val BUFFER_SIZE = 32 * 1024 // 32KB buffer for efficient file transfer
+        private const val BUFFER_SIZE = 64 * 1024
     }
 
     override suspend fun downloadFile(
@@ -152,11 +155,7 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
         remotePath: String,
         callback: UploadCallback
     ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            // Ensure SFTP client is initialized
-            val sftp = ssh.newStatefulSFTPClient()
-
-            // Get input stream from callback
+        ssh.newStatefulSFTPClient().use { sftp ->
             val inputStreamPair = callback.openInputStream()
             if (inputStreamPair == null) {
                 val error = IllegalStateException("Failed to open input stream")
@@ -166,81 +165,105 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
             }
 
             val (inputStreamAny, fileSize) = inputStreamPair
-            val inputStream = inputStreamAny as? java.io.InputStream
+            val inputStream = inputStreamAny as? InputStream
+
             if (inputStream == null) {
                 val error = IllegalArgumentException("Invalid input stream type")
                 println(error.message)
                 callback.onError(error)
                 return@withContext false
             }
-
-            // Open remote file for writing
-            val remoteFile = sftp.open(
-                remotePath, setOf(
-                    net.schmizz.sshj.sftp.OpenMode.WRITE,
-                    net.schmizz.sshj.sftp.OpenMode.CREAT,
-                    net.schmizz.sshj.sftp.OpenMode.TRUNC
-                )
-            )
-
-            try {
-                // Create output stream for remote file
-                val outputStream = remoteFile.RemoteFileOutputStream()
-
-                try {
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var bytesRead: Int
-                    var totalBytesRead = 0L
-
-                    // Read from local file and write to remote
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        outputStream.write(buffer, 0, bytesRead)
-                        totalBytesRead += bytesRead
-
-                        // Report progress
-                        callback.onProgress(totalBytesRead, fileSize)
+            inputStream.use {
+                val localSourceFile = object : LocalSourceFile {
+                    override fun getName(): String {
+                        return remotePath.substringAfterLast('/')
                     }
 
-                    outputStream.flush()
-
-                    // Verify upload completed successfully
-                    val success = totalBytesRead == fileSize
-                    if (success) {
-
-                        callback.onComplete()
-                    } else {
-                        val error = IllegalStateException(
-                            "Upload incomplete: $totalBytesRead / $fileSize bytes"
-                        )
-                        println(error.message)
-                        callback.onError(error)
+                    override fun getLength(): Long {
+                        return fileSize
                     }
 
-                    return@withContext success
-                } finally {
-                    try {
-                        inputStream.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+                    override fun getInputStream(): InputStream {
+                        // Wrap the input stream with progress tracking
+                        return ProgressTrackingInputStream(inputStream, fileSize, callback)
                     }
-                    try {
-                        outputStream.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+
+                    override fun getPermissions(): Int {
+                        return 644 // Default file permissions
                     }
+
+                    override fun isFile(): Boolean = true
+
+                    override fun isDirectory(): Boolean = false
+                    override fun getChildren(filter: LocalFileFilter?): Iterable<LocalSourceFile?>? {
+                        return null
+                    }
+
+                    override fun getLastAccessTime(): Long = System.currentTimeMillis() / 1000
+
+                    override fun getLastModifiedTime(): Long = System.currentTimeMillis() / 1000
+
+                    override fun providesAtimeMtime(): Boolean = true
                 }
-            } finally {
-                try {
-                    remoteFile.close()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                sftp.put(localSourceFile, remotePath)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            callback.onError(e)
-            return@withContext false
+            // Upload completed successfully
+            callback.onComplete()
+            return@withContext true
         }
+    }
+
+
+    /**
+     * InputStream wrapper that tracks read progress and reports to callback
+     */
+    private class ProgressTrackingInputStream(
+        private val inputStream: InputStream,
+        private val totalSize: Long,
+        private val callback: UploadCallback
+    ) : InputStream() {
+        private var bytesRead = 0L
+
+        override fun read(): Int {
+            val byte = inputStream.read()
+            if (byte != -1) {
+                bytesRead++
+                callback.onProgress(bytesRead, totalSize)
+            }
+            return byte
+        }
+
+        override fun read(b: ByteArray): Int {
+            val count = inputStream.read(b)
+            if (count > 0) {
+                bytesRead += count
+                callback.onProgress(bytesRead, totalSize)
+            }
+            return count
+        }
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int {
+            val count = inputStream.read(b, off, len)
+            if (count > 0) {
+                bytesRead += count
+                callback.onProgress(bytesRead, totalSize)
+            }
+            return count
+        }
+
+        override fun close() {
+            inputStream.close()
+        }
+
+        override fun available(): Int = inputStream.available()
+
+        override fun skip(n: Long): Long = inputStream.skip(n)
+
+        override fun mark(readlimit: Int) = inputStream.mark(readlimit)
+
+        override fun reset() = inputStream.reset()
+
+        override fun markSupported(): Boolean = inputStream.markSupported()
     }
 
     override suspend fun getFileSize(remotePath: String): Long = withContext(Dispatchers.IO) {
