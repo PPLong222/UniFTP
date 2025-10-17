@@ -54,7 +54,8 @@ fun HomeScreen(navController: NavHostController) {
                         BrowseScreenNav(
                             effect.server.nickname,
                             effect.server.host,
-                            effect.server.user
+                            effect.server.user,
+                            effect.server.downloadDir
                         )
                     )
                 }

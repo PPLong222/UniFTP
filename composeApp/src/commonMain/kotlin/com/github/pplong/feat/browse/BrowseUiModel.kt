@@ -16,6 +16,5 @@ data class FTPFileUiModel(
 
 data class FTPFileSelectableUiModel(
     val file: FTPFileUiModel,
-    val select: Boolean = false,
-    val loadingStatus: BrowseFileLoadingStatus = BrowseFileLoadingStatus.None
+    val status: BrowseFileLoadingStatus = BrowseFileLoadingStatus.None
 )

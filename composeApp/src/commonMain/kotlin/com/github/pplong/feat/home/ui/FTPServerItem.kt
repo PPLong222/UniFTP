@@ -12,10 +12,11 @@ data class FTPServerItem(
     val port: Int = 0,
     val nickname: String? = null,
     val lastConnectedTime: Long = 0,
+    val downloadDir: String? = null
 )
 
 fun FTPServer.toFTPServerItem(): FTPServerItem = FTPServerItem(
-    id, host, password, user, port, nickname, lastConnectedTime
+    id, host, password, user, port, nickname, lastConnectedTime, downloadDir
 )
 
 fun EditFTPServerItem.toFTPServer(): FTPServer = FTPServer(

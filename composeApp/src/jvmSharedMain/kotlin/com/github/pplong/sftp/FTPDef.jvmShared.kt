@@ -4,4 +4,8 @@ actual object SFTPClientFactory {
     actual fun create(): ICoreFTPClient {
         return SShjCoreSftpClient()
     }
+
+    actual fun createTransferClient(): ITransferFTPClient {
+        return SshjTransferSftpClient()
+    }
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.github.pplong.core.utils.rememberFilePicker
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.koin.compose.viewmodel.koinViewModel
@@ -30,6 +31,15 @@ fun BrowseScreen(
 ) {
     val viewModel = koinViewModel<BrowseViewModel>(parameters = { parametersOf(server) })
     val state by viewModel.uiState.collectAsState()
+
+    // File picker for upload
+    val filePicker = rememberFilePicker { results ->
+        results?.let { fileList ->
+            // Convert FilePickerResult to upload format (uri, fileName)
+            val files = fileList.map { it.uri to it.name }
+            viewModel.sendIntent(BrowseUiIntent.UploadFiles(files))
+        }
+    }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     BackHandler {
@@ -53,9 +63,13 @@ fun BrowseScreen(
             BrowseFloatingToolbar(
                 barStatus = state.toolbarStatus,
                 actionClicked = { },
-                fabClicked = { it ->
-                    {
-
+                fabClicked = { status ->
+                    if (status == BrowseToolbarStatus.SELECTED) {
+                        // Download mode
+                        viewModel.sendIntent(BrowseUiIntent.Download)
+                    } else {
+                        // Upload mode - open file picker
+                        filePicker()
                     }
                 },
             )
@@ -71,7 +85,7 @@ fun BrowseScreen(
                 contentAlignment = Alignment.TopCenter,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(vertical = 16.dp)
             ) {
                 BrowseMainContent(state, viewModel::sendIntent)
             }

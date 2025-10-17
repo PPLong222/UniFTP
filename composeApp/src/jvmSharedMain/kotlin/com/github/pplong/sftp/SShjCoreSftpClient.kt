@@ -5,7 +5,7 @@ import net.schmizz.sshj.sftp.FileMode
 import net.schmizz.sshj.sftp.RemoteResourceInfo
 import net.schmizz.sshj.xfer.FilePermission
 
-class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
+open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
 
     override suspend fun list(path: String): List<FTPFile> {
         return sftp.ls(path).mapNotNull { remoteFile ->

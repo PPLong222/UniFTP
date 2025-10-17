@@ -46,7 +46,8 @@ fun App() {
                         user = args.user,
                         nickname = args.nickname,
                         lastConnectedTime = 0L,
-                        port = 0
+                        port = 0,
+                        downloadDir = args.downloadDir
                     ),
                     navController
                 )

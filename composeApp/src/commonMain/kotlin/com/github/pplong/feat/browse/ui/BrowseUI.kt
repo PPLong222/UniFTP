@@ -1,5 +1,6 @@
 package com.github.pplong.feat.browse.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -35,11 +37,14 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
+import uniftp.composeapp.generated.resources.ic_check
+import uniftp.composeapp.generated.resources.ic_data_off
 import uniftp.composeapp.generated.resources.ic_file
 import uniftp.composeapp.generated.resources.ic_folder
 import uniftp.composeapp.generated.resources.select
 import uniftp.composeapp.generated.resources.unselect
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FTPFileInfo(
     fileUiModel: FTPFileSelectableUiModel,
@@ -87,13 +92,44 @@ fun FTPFileInfo(
             }
         },
         trailingContent = {
-            if (appbarStatus == BrowseToolbarStatus.SELECTED) {
-                Checkbox(
-                    checked = fileUiModel.select,
-                    onCheckedChange = {
-                        onIntent(BrowseUiIntent.SelectFile(file))
+            AnimatedContent(targetState = fileUiModel.status::class) { target ->
+                when (target) {
+                    BrowseFileLoadingStatus.Checked::class,BrowseFileLoadingStatus.UnChecked::class -> {
+                        Checkbox(
+                            checked = fileUiModel.status == BrowseFileLoadingStatus.Checked,
+                            onCheckedChange = { checked ->
+                                onIntent(BrowseUiIntent.SelectFile(file, checked))
+                            }
+                        )
                     }
-                )
+                    BrowseFileLoadingStatus.Failed::class -> {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_data_off),
+                            modifier = Modifier.size(32.dp),
+                            contentDescription = null
+                        )
+                    }
+                    BrowseFileLoadingStatus.Loading::class -> {
+                        val percent = (fileUiModel.status as? BrowseFileLoadingStatus.Loading)?.percent ?: 0f
+                        CircularWavyProgressIndicator(
+                            progress = { percent },
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    BrowseFileLoadingStatus.None::class -> {
+
+                    }
+                    BrowseFileLoadingStatus.Success::class -> {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_check),
+                            modifier = Modifier.size(32.dp),
+                            contentDescription = null
+                        )
+                    }
+                    BrowseFileLoadingStatus.Waiting::class -> {
+                        ContainedLoadingIndicator(modifier = Modifier.size(32.dp))
+                    }
+                }
             }
         },
         modifier = Modifier.clickable {
@@ -253,6 +289,52 @@ fun PreviewFTPFileInfo() {
                 owner = "root",
                 group = "root",
             )
+        ),
+        {},
+        appbarStatus = BrowseToolbarStatus.SELECTED
+    )
+}
+
+@Composable
+@Preview
+fun PreviewFTPFileInfoWithDownloading() {
+    FTPFileInfo(
+        fileUiModel = FTPFileSelectableUiModel(
+            FTPFileUiModel(
+                name = "TestFile",
+                path = "/test/TestFile",
+                parentPath = "/test",
+                isDirectory = false,
+                size = 1024,
+                modifiedTime = 0,
+                permissions = "0001",
+                owner = "root",
+                group = "root",
+            ),
+            status = BrowseFileLoadingStatus.Loading(0.4F)
+        ),
+        {},
+        appbarStatus = BrowseToolbarStatus.SELECTED
+    )
+}
+
+@Composable
+@Preview
+fun PreviewFTPFileInfoWithCheck() {
+    FTPFileInfo(
+        fileUiModel = FTPFileSelectableUiModel(
+            FTPFileUiModel(
+                name = "TestFile",
+                path = "/test/TestFile",
+                parentPath = "/test",
+                isDirectory = false,
+                size = 1024,
+                modifiedTime = 0,
+                permissions = "0001",
+                owner = "root",
+                group = "root",
+            ),
+            status = BrowseFileLoadingStatus.Success
         ),
         {},
         appbarStatus = BrowseToolbarStatus.SELECTED

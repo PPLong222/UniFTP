@@ -21,5 +21,14 @@ sealed class BrowseUiIntent : UiIntent {
 
     // Appbar
     data class ChangeBrowseMode(val appbarStatus: BrowseToolbarStatus): BrowseUiIntent()
-    data class SelectFile(val file: FTPFileUiModel) : BrowseUiIntent()
+    data class SelectFile(val file: FTPFileUiModel, val checked: Boolean) : BrowseUiIntent()
+
+    // Toolbar
+    data object Download : BrowseUiIntent()
+    data object Upload : BrowseUiIntent()
+
+    // Upload with selected files
+    data class UploadFiles(
+        val files: List<Pair<String, String>> // Pair of (uri, fileName)
+    ) : BrowseUiIntent()
 }

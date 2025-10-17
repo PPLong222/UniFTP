@@ -7,9 +7,12 @@ import com.github.pplong.feat.browse.BrowseUiState
 import com.github.pplong.feat.browse.FTPFileSelectableUiModel
 import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.browse.toFTPFileUiModel
+import com.github.pplong.feat.browse.ui.BrowseFileLoadingStatus
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.sftp.FTPGlobalSingleton
+import com.github.pplong.sftp.PlatformDownloadCallbackFactory
+import com.github.pplong.sftp.PlatformUploadCallbackFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -50,8 +53,10 @@ class BrowseViewModel(
             is BrowseUiIntent.Jump -> jump(intent.path)
             BrowseUiIntent.Back -> back()
             is BrowseUiIntent.ChangeBrowseMode -> changeBrowseMode(intent.appbarStatus)
-            is BrowseUiIntent.SelectFile -> selectFile(intent.file)
-
+            is BrowseUiIntent.SelectFile -> selectFile(intent.file, intent.checked)
+            BrowseUiIntent.Download -> download()
+            BrowseUiIntent.Upload -> upload()
+            is BrowseUiIntent.UploadFiles -> uploadFiles(intent.files)
         }
     }
 
@@ -85,19 +90,143 @@ class BrowseViewModel(
 
     private fun changeBrowseMode(appbarStatus: BrowseToolbarStatus) {
         setState {
-            copy(toolbarStatus = if (appbarStatus == BrowseToolbarStatus.STANDARD) BrowseToolbarStatus.SELECTED else BrowseToolbarStatus.STANDARD)
+            copy(
+                toolbarStatus = if (appbarStatus == BrowseToolbarStatus.STANDARD) BrowseToolbarStatus.SELECTED else BrowseToolbarStatus.STANDARD,
+                fileList = fileList.map { it.copy(status = if (appbarStatus == BrowseToolbarStatus.STANDARD) BrowseFileLoadingStatus.UnChecked else BrowseFileLoadingStatus.None) })
         }
     }
 
-    private fun selectFile(file: FTPFileUiModel) {
+    private fun selectFile(file: FTPFileUiModel, checked: Boolean) {
         setState {
             copy(
                 fileList = fileList.map { fileModel ->
                     if (fileModel.file == file) {
-                        fileModel.copy(select = !(fileModel.select))
+                        fileModel.copy(status = if (checked) BrowseFileLoadingStatus.Checked else BrowseFileLoadingStatus.UnChecked)
                     } else {
                         fileModel
                     }
+                }
+            )
+        }
+    }
+
+    private fun download() {
+        val downloadFileList =
+            uiState.value.fileList.filter { it.status == BrowseFileLoadingStatus.Checked }
+                .map { it.file }
+        setState {
+            copy(
+                toolbarStatus = BrowseToolbarStatus.STANDARD,
+                fileList = fileList.map {
+                    if (it.status == BrowseFileLoadingStatus.Checked) {
+                        it.copy(
+                            status = BrowseFileLoadingStatus.Waiting
+                        )
+                    } else {
+                        it.copy(
+                            status = BrowseFileLoadingStatus.None
+                        )
+                    }
+                })
+        }
+
+        // Validate download directory
+        val downloadDir = ftpServer.downloadDir
+        if (downloadDir.isNullOrEmpty()) {
+            println("Download directory not configured")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // Get platform-specific download callback factory
+            val callbackFactory = PlatformDownloadCallbackFactory.get()
+
+            manager.download(
+                list = downloadFileList,
+                downloadDir = downloadDir,
+                callbackFactory = callbackFactory,
+                onProgress = { file, progress ->
+                    setState {
+                        copy(fileList = fileList.map {
+                            if (it.file == file) {
+                                it.copy(status = BrowseFileLoadingStatus.Loading(progress))
+                            } else {
+                                it
+                            }
+                        })
+                    }
+                },
+                onFileComplete = { file ->
+                    println("Download completed: ${file.name}")
+                    setState {
+                        copy(fileList = fileList.map {
+                            if (it.file == file) {
+                                it.copy(status = BrowseFileLoadingStatus.Success)
+                            } else {
+                                it
+                            }
+                        })
+                    }
+                },
+                onFileError = { file, error ->
+                    println("Download failed for ${file.name}: ${error.message}")
+                    error.printStackTrace()
+                    setState {
+                        copy(fileList = fileList.map {
+                            if (it.file == file) {
+                                it.copy(
+                                    status = BrowseFileLoadingStatus.Failed(
+                                        error.message ?: "Unknown error"
+                                    ),
+                                )
+                            } else {
+                                it
+                            }
+                        })
+                    }
+                }
+            )
+        }
+    }
+
+    private fun upload() {
+        // This method is called when user clicks upload button
+        // The actual file selection and upload is handled in UI layer
+        // UI will call UploadFiles intent after user selects files
+    }
+
+    private fun uploadFiles(files: List<Pair<String, String>>) {
+        if (files.isEmpty()) {
+            println("No files selected for upload")
+            return
+        }
+
+        // Get current remote directory
+        val remoteDir = uiState.value.path
+
+        viewModelScope.launch(Dispatchers.IO) {
+            // Get platform-specific upload callback factory
+            val callbackFactory = PlatformUploadCallbackFactory.get()
+
+            // Track upload progress for UI
+            val uploadingFiles = files.associate { it to 0f }.toMutableMap()
+
+            manager.upload(
+                files = files,
+                remoteDir = remoteDir,
+                callbackFactory = callbackFactory,
+                onProgress = { fileInfo, progress ->
+                    uploadingFiles[fileInfo] = progress
+                    println("Uploading ${fileInfo.second}: ${(progress * 100).toInt()}%")
+                },
+                onFileComplete = { fileInfo ->
+                    println("Upload completed: ${fileInfo.second}")
+                    // Refresh file list to show newly uploaded file
+                    refresh()
+                },
+                onFileError = { fileInfo, error ->
+                    println("Upload failed for ${fileInfo.second}: ${error.message}")
+                    error.printStackTrace()
                 }
             )
         }
