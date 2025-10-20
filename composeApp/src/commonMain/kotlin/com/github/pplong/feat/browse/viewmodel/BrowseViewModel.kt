@@ -58,12 +58,11 @@ class BrowseViewModel(
             is BrowseUiIntent.SelectFile -> selectFile(intent.file, intent.checked)
             BrowseUiIntent.Download -> download()
             BrowseUiIntent.Upload -> upload()
-            is BrowseUiIntent.UploadFiles -> uploadFiles(intent.files)
+            is BrowseUiIntent.UploadFiles -> uploadFiles(intent.files, intent.detectSameName)
             BrowseUiIntent.Delete -> delete()
             BrowseUiIntent.DismissDialog -> dismissDialog()
             BrowseUiIntent.ShowDeleteDialog -> showDismissDialog()
             BrowseUiIntent.ShowUploadPicker -> showUploadPicker()
-
         }
     }
 
@@ -204,10 +203,22 @@ class BrowseViewModel(
         // UI will call UploadFiles intent after user selects files
     }
 
-    private fun uploadFiles(files: List<Pair<String, String>>) {
+    private fun uploadFiles(
+        files: List<Pair<String, String>>,
+        hasDetectedSameName: Boolean = false
+    ) {
         if (files.isEmpty()) {
             println("No files selected for upload")
             return
+        }
+
+        val currentFileList = uiState.value.fileList.map { it.file.name }
+        // if has same file name, toast a dialog
+        if (!hasDetectedSameName) {
+            if (files.map { it.second }.any { it in currentFileList }) {
+                setState { copy(dialogState = BrowseDialogState.FileNameDuplicate(files)) }
+                return
+            }
         }
 
         // Get current remote directory

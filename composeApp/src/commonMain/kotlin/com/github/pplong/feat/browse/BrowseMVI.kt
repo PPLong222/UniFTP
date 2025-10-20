@@ -33,7 +33,8 @@ sealed class BrowseUiIntent : UiIntent {
 
     // Upload with selected files
     data class UploadFiles(
-        val files: List<Pair<String, String>> // Pair of (uri, fileName)
+        val files: List<Pair<String, String>>, // Pair of (uri, fileName)
+        val detectSameName: Boolean = false
     ) : BrowseUiIntent()
 
     // Dialog
@@ -50,5 +51,9 @@ sealed class BrowseDialogState {
     data class ConfirmDelete(
         val fileList: List<FTPFileUiModel>,
         val deleteCount: Int
+    ) : BrowseDialogState()
+
+    data class FileNameDuplicate(
+        val files: List<Pair<String, String>>
     ) : BrowseDialogState()
 }

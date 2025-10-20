@@ -30,9 +30,13 @@ import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.cancel
 import uniftp.composeapp.generated.resources.confirm
 import uniftp.composeapp.generated.resources.delete_files
+import uniftp.composeapp.generated.resources.file_name_already_exist_title
 import uniftp.composeapp.generated.resources.ic_delete
+import uniftp.composeapp.generated.resources.ic_warning
 import uniftp.composeapp.generated.resources.remove_dialog_tip
 import uniftp.composeapp.generated.resources.removing_with_placeholder
+import uniftp.composeapp.generated.resources.replace_all
+import uniftp.composeapp.generated.resources.replace_dialog_tip
 
 private enum class BrowseState {
     CONFIRM,
@@ -132,7 +136,10 @@ private fun BrowseDeleteDeletingAlertDialog(
             Text(text = stringResource(Res.string.delete_files, fileCount))
         },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(
                     text = stringResource(
                         Res.string.removing_with_placeholder,
@@ -146,6 +153,40 @@ private fun BrowseDeleteDeletingAlertDialog(
                         .size(32.dp)
                 )
             }
+        }
+    )
+}
+
+@Composable
+fun BrowseUploadSameNameAlertDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        ),
+        onDismissRequest = onDismiss,
+        dismissButton = {
+            Text(text = stringResource(Res.string.cancel), modifier = Modifier.clickable {
+                onDismiss()
+            })
+        },
+        confirmButton = {
+            Text(text = stringResource(Res.string.replace_all), modifier = Modifier.clickable {
+                onDismiss()
+                onConfirm()
+            })
+        },
+        icon = {
+            Icon(painter = painterResource(Res.drawable.ic_warning), contentDescription = null)
+        },
+        title = {
+            Text(text = stringResource(Res.string.file_name_already_exist_title))
+        },
+        text = {
+            Text(text = stringResource(Res.string.replace_dialog_tip))
         }
     )
 }
@@ -175,3 +216,12 @@ private fun PreviewBrowseDeleteDeletingDialogContent() {
     BrowseDeleteDeletingAlertDialog(10, 5, {})
 }
 
+
+@Preview
+@Composable
+fun PreviewBrowseUploadSameNameAlertDialog() {
+    BrowseUploadSameNameAlertDialog(
+        onDismiss = {},
+        onConfirm = {}
+    )
+}

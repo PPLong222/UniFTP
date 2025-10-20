@@ -39,7 +39,7 @@ fun BrowseScreen(
         results?.let { fileList ->
             // Convert FilePickerResult to upload format (uri, fileName)
             val files = fileList.map { it.uri to it.name }
-            viewModel.sendIntent(BrowseUiIntent.UploadFiles(files))
+            viewModel.sendIntent(BrowseUiIntent.UploadFiles(files, false))
         }
     }
 
@@ -103,6 +103,20 @@ fun BrowseScreen(
                 dialogState,
                 { viewModel.sendIntent(BrowseUiIntent.Delete) },
                 { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+            )
+        }
+
+        is BrowseDialogState.FileNameDuplicate -> {
+            BrowseUploadSameNameAlertDialog(
+                onDismiss = { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+                onConfirm = {
+                    viewModel.sendIntent(
+                        BrowseUiIntent.UploadFiles(
+                            dialogState.files,
+                            true
+                        )
+                    )
+                }
             )
         }
     }
