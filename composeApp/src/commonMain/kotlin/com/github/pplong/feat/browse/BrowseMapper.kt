@@ -20,7 +20,7 @@ fun BrowseToolbarBarAction.mapToUiIntent(): BrowseUiIntent {
     return when (this) {
         BrowseToolbarBarAction.REFRESH -> BrowseUiIntent.Refresh
         BrowseToolbarBarAction.SEARCH -> BrowseUiIntent.Refresh
-        BrowseToolbarBarAction.CREATE_FOLDER -> BrowseUiIntent.Refresh
+        BrowseToolbarBarAction.CREATE_FOLDER -> BrowseUiIntent.ShowCreateFolder
         BrowseToolbarBarAction.MOVE -> BrowseUiIntent.Refresh
         BrowseToolbarBarAction.SHARE -> BrowseUiIntent.Refresh
         BrowseToolbarBarAction.INFO -> BrowseUiIntent.Refresh

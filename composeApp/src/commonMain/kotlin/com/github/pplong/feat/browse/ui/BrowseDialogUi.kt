@@ -12,7 +12,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.feat.browse.BrowseCreateFolderStatus
 import com.github.pplong.feat.browse.BrowseDialogState
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -29,8 +33,12 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.cancel
 import uniftp.composeapp.generated.resources.confirm
+import uniftp.composeapp.generated.resources.create_folder_duplicate_tip
+import uniftp.composeapp.generated.resources.create_folder_title
 import uniftp.composeapp.generated.resources.delete_files
 import uniftp.composeapp.generated.resources.file_name_already_exist_title
+import uniftp.composeapp.generated.resources.folder_name
+import uniftp.composeapp.generated.resources.ic_create_new_folder
 import uniftp.composeapp.generated.resources.ic_delete
 import uniftp.composeapp.generated.resources.ic_warning
 import uniftp.composeapp.generated.resources.remove_dialog_tip
@@ -191,6 +199,65 @@ fun BrowseUploadSameNameAlertDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BrowseCreateFolderAlertDialog(
+    dialogState: BrowseDialogState.CreateFolder,
+    onFolderChanged: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        ),
+        onDismissRequest = onDismiss,
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(Res.string.cancel))
+            }
+        },
+        confirmButton = {
+            if (dialogState.requestStatus == CommonRequestStatus.REQUESTING) {
+                ContainedLoadingIndicator()
+            } else {
+                TextButton(
+                    onClick = onConfirm,
+                    enabled = dialogState.state == BrowseCreateFolderStatus.NONE
+                ) {
+                    Text(text = stringResource(Res.string.confirm))
+                }
+            }
+        },
+        icon = {
+            Icon(
+                painter = painterResource(Res.drawable.ic_create_new_folder),
+                contentDescription = null
+            )
+        },
+        title = {
+            Text(text = stringResource(Res.string.create_folder_title))
+        },
+        text = {
+            OutlinedTextField(
+                value = dialogState.folderName,
+                onValueChange = onFolderChanged,
+                label = { Text(text = stringResource(Res.string.folder_name)) },
+                supportingText = {
+                    if (dialogState.state == BrowseCreateFolderStatus.DUPLICATE) {
+                        Text(
+                            text = stringResource(Res.string.create_folder_duplicate_tip),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                modifier = Modifier
+            )
+        }
+    )
+}
+
 
 @Preview
 @Composable
@@ -223,5 +290,16 @@ fun PreviewBrowseUploadSameNameAlertDialog() {
     BrowseUploadSameNameAlertDialog(
         onDismiss = {},
         onConfirm = {}
+    )
+}
+
+@Preview
+@Composable
+fun PreviewBrowseCreateFolderAlertDialog() {
+    BrowseCreateFolderAlertDialog(
+        BrowseDialogState.CreateFolder(
+            folderName = ""
+        ), {}, {},
+        {}
     )
 }

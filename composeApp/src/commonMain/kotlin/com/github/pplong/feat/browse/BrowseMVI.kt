@@ -40,6 +40,9 @@ sealed class BrowseUiIntent : UiIntent {
     // Dialog
     data object DismissDialog : BrowseUiIntent()
     data object ShowUploadPicker : BrowseUiIntent()
+    data object ShowCreateFolder : BrowseUiIntent()
+    data class OnCreateFolderNameChanged(val folderName: String) : BrowseUiIntent()
+    data object OnCreateFolderConfirmClicked : BrowseUiIntent()
 }
 
 sealed class BrowseUiEffect : UiEffect {
@@ -55,5 +58,11 @@ sealed class BrowseDialogState {
 
     data class FileNameDuplicate(
         val files: List<Pair<String, String>>
+    ) : BrowseDialogState()
+
+    data class CreateFolder(
+        val folderName: String,
+        val state: BrowseCreateFolderStatus = BrowseCreateFolderStatus.NONE,
+        val requestStatus: CommonRequestStatus = CommonRequestStatus.INITIAL
     ) : BrowseDialogState()
 }

@@ -42,6 +42,13 @@ open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
         }
     }
 
+    override suspend fun mkdir(path: String) {
+        ensureSSHConnection()
+        return ssh.newStatefulSFTPClient().use { sftp ->
+            sftp.mkdir(path)
+        }
+    }
+
     /**
      * Convert SSHJ RemoteResourceInfo to FTPFile
      */

@@ -18,3 +18,8 @@ data class FTPFileSelectableUiModel(
     val file: FTPFileUiModel,
     val status: BrowseFileLoadingStatus = BrowseFileLoadingStatus.None
 )
+
+enum class BrowseCreateFolderStatus {
+    NONE,
+    DUPLICATE
+}

@@ -2,6 +2,8 @@ import androidx.lifecycle.viewModelScope
 import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.core.utils.appendFilePath
+import com.github.pplong.feat.browse.BrowseCreateFolderStatus
 import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
@@ -63,6 +65,9 @@ class BrowseViewModel(
             BrowseUiIntent.DismissDialog -> dismissDialog()
             BrowseUiIntent.ShowDeleteDialog -> showDismissDialog()
             BrowseUiIntent.ShowUploadPicker -> showUploadPicker()
+            BrowseUiIntent.OnCreateFolderConfirmClicked -> onCreateFolderConfirmedClicked()
+            is BrowseUiIntent.OnCreateFolderNameChanged -> onFolderNameChanged(intent.folderName)
+            BrowseUiIntent.ShowCreateFolder -> showCreateFolderDialog()
         }
     }
 
@@ -287,5 +292,44 @@ class BrowseViewModel(
 
     private fun showUploadPicker() {
         sendEffect { BrowseUiEffect.ShowUploadPicker }
+    }
+
+    private fun showCreateFolderDialog() {
+        setState { copy(dialogState = BrowseDialogState.CreateFolder("")) }
+    }
+
+    private fun onCreateFolderConfirmedClicked() {
+        val dialogState = uiState.value.dialogState as? BrowseDialogState.CreateFolder ?: return
+        setState { copy(dialogState = dialogState.copy(requestStatus = CommonRequestStatus.REQUESTING)) }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                manager.mkdir(uiState.value.path.appendFilePath(dialogState.folderName))
+            }.onSuccess {
+                dismissDialog()
+                refresh()
+            }.onFailure {
+                setState { copy(dialogState = dialogState.copy(requestStatus = CommonRequestStatus.FAILED)) }
+            }
+        }
+    }
+
+    private fun onFolderNameChanged(folderName: String) {
+        // Duplicate detection
+        if (uiState.value.fileList.find { it.file.isDirectory && it.file.name == folderName } != null) {
+            setState {
+                copy(
+                    dialogState = BrowseDialogState.CreateFolder(
+                        folderName,
+                        BrowseCreateFolderStatus.DUPLICATE
+                    )
+                )
+            }
+            return
+        }
+
+        setState {
+            copy(dialogState = BrowseDialogState.CreateFolder(folderName))
+        }
     }
 }

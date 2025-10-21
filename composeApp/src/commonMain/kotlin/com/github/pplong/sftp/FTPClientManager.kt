@@ -216,4 +216,10 @@ class FTPClientManager(
     ) {
         coreFTPClient.delete(deleteFilesPaths, onProgress)
     }
+
+    suspend fun mkdir(
+        path: String
+    ) {
+        coreFTPClient.mkdir(path)
+    }
 }

@@ -22,6 +22,11 @@ import com.github.pplong.core.utils.rememberFilePicker
 import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
+import com.github.pplong.feat.browse.BrowseUiIntent.Back
+import com.github.pplong.feat.browse.BrowseUiIntent.Delete
+import com.github.pplong.feat.browse.BrowseUiIntent.DismissDialog
+import com.github.pplong.feat.browse.BrowseUiIntent.Jump
+import com.github.pplong.feat.browse.BrowseUiIntent.UploadFiles
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -39,7 +44,7 @@ fun BrowseScreen(
         results?.let { fileList ->
             // Convert FilePickerResult to upload format (uri, fileName)
             val files = fileList.map { it.uri to it.name }
-            viewModel.sendIntent(BrowseUiIntent.UploadFiles(files, false))
+            viewModel.sendIntent(UploadFiles(files, false))
         }
     }
 
@@ -55,7 +60,7 @@ fun BrowseScreen(
     }
 
     BackHandler {
-        viewModel.sendIntent(BrowseUiIntent.Back)
+        viewModel.sendIntent(Back)
     }
     Scaffold(
         topBar = {
@@ -81,7 +86,7 @@ fun BrowseScreen(
         Column(modifier = Modifier.padding(paddingValues)) {
             DraggablePathIndicator(
                 state.path,
-                { newPath -> viewModel.sendIntent(BrowseUiIntent.Jump(newPath)) },
+                { newPath -> viewModel.sendIntent(Jump(newPath)) },
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
             Box(
@@ -99,24 +104,33 @@ fun BrowseScreen(
         BrowseDialogState.None -> {}
         is BrowseDialogState.ConfirmDelete -> {
             BrowseDeleteDialog(
-                { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+                { viewModel.sendIntent(DismissDialog) },
                 dialogState,
-                { viewModel.sendIntent(BrowseUiIntent.Delete) },
-                { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+                { viewModel.sendIntent(Delete) },
+                { viewModel.sendIntent(DismissDialog) },
             )
         }
 
         is BrowseDialogState.FileNameDuplicate -> {
             BrowseUploadSameNameAlertDialog(
-                onDismiss = { viewModel.sendIntent(BrowseUiIntent.DismissDialog) },
+                onDismiss = { viewModel.sendIntent(DismissDialog) },
                 onConfirm = {
                     viewModel.sendIntent(
-                        BrowseUiIntent.UploadFiles(
+                        UploadFiles(
                             dialogState.files,
                             true
                         )
                     )
                 }
+            )
+        }
+
+        is BrowseDialogState.CreateFolder -> {
+            BrowseCreateFolderAlertDialog(
+                dialogState = dialogState,
+                onFolderChanged = { viewModel.sendIntent(BrowseUiIntent.OnCreateFolderNameChanged(it)) },
+                onDismiss = { viewModel.sendIntent(DismissDialog) },
+                onConfirm = { viewModel.sendIntent(BrowseUiIntent.OnCreateFolderConfirmClicked) }
             )
         }
     }
