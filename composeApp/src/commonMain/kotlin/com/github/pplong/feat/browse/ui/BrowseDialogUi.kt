@@ -88,20 +88,22 @@ private fun BrowseDeleteConfirmAlertDialog(
     AlertDialog(
         onDismissRequest = onCancel,
         confirmButton = {
-            Text(
-                text = stringResource(Res.string.confirm),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable { onConfirm() }
-            )
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(Res.string.confirm),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         },
         dismissButton = {
-            Text(
-                text = stringResource(Res.string.cancel),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable { onCancel() }
-            )
+            TextButton(onClick = onCancel) {
+                Text(
+                    text = stringResource(Res.string.cancel),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
         },
         icon = {
             Icon(painter = painterResource(Res.drawable.ic_delete), contentDescription = null)
