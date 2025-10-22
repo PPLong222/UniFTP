@@ -31,6 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.mapToUiIntent
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.CREATE_FOLDER
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.DELETE
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.INFO
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.MOVE
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.REFRESH
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.SEARCH
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.SHARE
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.UPLOAD_FILE
+import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.UPLOAD_MEDIA
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -39,6 +48,8 @@ import uniftp.composeapp.generated.resources.ic_arrow_downward
 import uniftp.composeapp.generated.resources.ic_arrow_upward
 import uniftp.composeapp.generated.resources.ic_create_new_folder
 import uniftp.composeapp.generated.resources.ic_delete
+import uniftp.composeapp.generated.resources.ic_draft
+import uniftp.composeapp.generated.resources.ic_image
 import uniftp.composeapp.generated.resources.ic_path
 import uniftp.composeapp.generated.resources.ic_refresh
 
@@ -136,7 +147,8 @@ fun BrowseFloatingToolbar(
     val list =
         if (barStatus == BrowseToolbarStatus.STANDARD) standardBrowseToolbarList else fileBrowseToolBarList
 
-
+    val uiIntent =
+        if (barStatus == BrowseToolbarStatus.STANDARD) UPLOAD_FILE else BrowseToolbarBarAction.DOWNLOAD
     HorizontalFloatingToolbar(
         expanded = true,
         content = {
@@ -184,7 +196,7 @@ fun BrowseFloatingToolbar(
         floatingActionButton = {
             FloatingToolbarDefaults.VibrantFloatingActionButton(
                 onClick = {
-                    onIntent(barStatus.mapToUiIntent())
+                    onIntent(uiIntent.mapToUiIntent())
                 },
                 content = {
                     if (barStatus == BrowseToolbarStatus.STANDARD) {
@@ -210,13 +222,16 @@ fun BrowseFloatingToolbar(
 @Composable
 private fun mapActionToResource(action: BrowseToolbarBarAction): Painter {
     return when (action) {
-        BrowseToolbarBarAction.REFRESH -> painterResource(Res.drawable.ic_refresh)
-        BrowseToolbarBarAction.SEARCH -> painterResource(Res.drawable.ic_refresh)
-        BrowseToolbarBarAction.CREATE_FOLDER -> painterResource(Res.drawable.ic_create_new_folder)
-        BrowseToolbarBarAction.DELETE -> painterResource(Res.drawable.ic_delete)
-        BrowseToolbarBarAction.MOVE -> painterResource(Res.drawable.ic_refresh)
-        BrowseToolbarBarAction.SHARE -> painterResource(Res.drawable.ic_refresh)
-        BrowseToolbarBarAction.INFO -> painterResource(Res.drawable.ic_refresh)
+        REFRESH -> painterResource(Res.drawable.ic_refresh)
+        SEARCH -> painterResource(Res.drawable.ic_refresh)
+        CREATE_FOLDER -> painterResource(Res.drawable.ic_create_new_folder)
+        DELETE -> painterResource(Res.drawable.ic_delete)
+        MOVE -> painterResource(Res.drawable.ic_refresh)
+        SHARE -> painterResource(Res.drawable.ic_refresh)
+        INFO -> painterResource(Res.drawable.ic_refresh)
+        UPLOAD_FILE -> painterResource(Res.drawable.ic_draft)
+        UPLOAD_MEDIA -> painterResource(Res.drawable.ic_image)
+        BrowseToolbarBarAction.DOWNLOAD -> painterResource(Res.drawable.ic_arrow_downward)
     }
 }
 

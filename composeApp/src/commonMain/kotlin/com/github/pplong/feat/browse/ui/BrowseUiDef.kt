@@ -24,7 +24,11 @@ enum class BrowseToolbarBarAction {
     DELETE,
     MOVE,
     SHARE,
-    INFO
+    INFO,
+
+    DOWNLOAD,
+    UPLOAD_FILE,
+    UPLOAD_MEDIA
 }
 
 val fileBrowseToolBarList = listOf(
@@ -35,4 +39,5 @@ val fileBrowseToolBarList = listOf(
 val standardBrowseToolbarList = listOf(
     BrowseToolbarBarAction.REFRESH,
     BrowseToolbarBarAction.CREATE_FOLDER,
+    BrowseToolbarBarAction.UPLOAD_MEDIA
 )

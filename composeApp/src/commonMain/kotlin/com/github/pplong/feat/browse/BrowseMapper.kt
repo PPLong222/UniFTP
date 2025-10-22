@@ -1,7 +1,6 @@
 package com.github.pplong.feat.browse
 
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction
-import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.sftp.def.FTPFile
 
 fun FTPFile.toFTPFileUiModel(): FTPFileUiModel = FTPFileUiModel(
@@ -25,12 +24,8 @@ fun BrowseToolbarBarAction.mapToUiIntent(): BrowseUiIntent {
         BrowseToolbarBarAction.SHARE -> BrowseUiIntent.Refresh
         BrowseToolbarBarAction.INFO -> BrowseUiIntent.Refresh
         BrowseToolbarBarAction.DELETE -> BrowseUiIntent.ShowDeleteDialog
-    }
-}
-
-fun BrowseToolbarStatus.mapToUiIntent(): BrowseUiIntent {
-    return when (this) {
-        BrowseToolbarStatus.STANDARD -> BrowseUiIntent.ShowUploadPicker
-        BrowseToolbarStatus.SELECTED -> BrowseUiIntent.Download
+        BrowseToolbarBarAction.UPLOAD_FILE -> BrowseUiIntent.ShowUploadFilesPicker
+        BrowseToolbarBarAction.UPLOAD_MEDIA -> BrowseUiIntent.ShowUploadMediaPicker
+        BrowseToolbarBarAction.DOWNLOAD -> BrowseUiIntent.Download
     }
 }

@@ -39,14 +39,16 @@ sealed class BrowseUiIntent : UiIntent {
 
     // Dialog
     data object DismissDialog : BrowseUiIntent()
-    data object ShowUploadPicker : BrowseUiIntent()
+    data object ShowUploadFilesPicker : BrowseUiIntent()
     data object ShowCreateFolder : BrowseUiIntent()
     data class OnCreateFolderNameChanged(val folderName: String) : BrowseUiIntent()
     data object OnCreateFolderConfirmClicked : BrowseUiIntent()
+    data object ShowUploadMediaPicker : BrowseUiIntent()
 }
 
 sealed class BrowseUiEffect : UiEffect {
-    data object ShowUploadPicker : BrowseUiEffect()
+    data object ShowUploadFilesPicker : BrowseUiEffect()
+    data object ShowUploadMediaPicker : BrowseUiEffect()
 }
 
 sealed class BrowseDialogState {

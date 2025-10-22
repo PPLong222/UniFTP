@@ -64,10 +64,11 @@ class BrowseViewModel(
             BrowseUiIntent.Delete -> delete()
             BrowseUiIntent.DismissDialog -> dismissDialog()
             BrowseUiIntent.ShowDeleteDialog -> showDismissDialog()
-            BrowseUiIntent.ShowUploadPicker -> showUploadPicker()
+            BrowseUiIntent.ShowUploadFilesPicker -> showUploadPicker()
             BrowseUiIntent.OnCreateFolderConfirmClicked -> onCreateFolderConfirmedClicked()
             is BrowseUiIntent.OnCreateFolderNameChanged -> onFolderNameChanged(intent.folderName)
             BrowseUiIntent.ShowCreateFolder -> showCreateFolderDialog()
+            BrowseUiIntent.ShowUploadMediaPicker -> showUploadMediaPicker()
         }
     }
 
@@ -292,7 +293,7 @@ class BrowseViewModel(
     }
 
     private fun showUploadPicker() {
-        sendEffect { BrowseUiEffect.ShowUploadPicker }
+        sendEffect { BrowseUiEffect.ShowUploadFilesPicker }
     }
 
     private fun showCreateFolderDialog() {
@@ -332,5 +333,9 @@ class BrowseViewModel(
         setState {
             copy(dialogState = BrowseDialogState.CreateFolder(folderName))
         }
+    }
+
+    private fun showUploadMediaPicker() {
+        sendEffect { BrowseUiEffect.ShowUploadMediaPicker }
     }
 }

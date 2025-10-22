@@ -19,6 +19,7 @@ import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.github.pplong.core.utils.rememberFilePicker
+import com.github.pplong.core.utils.rememberMediaPicker
 import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
@@ -39,6 +40,7 @@ fun BrowseScreen(
 ) {
     val viewModel = koinViewModel<BrowseViewModel>(parameters = { parametersOf(server) })
     val state by viewModel.uiState.collectAsState()
+
     // File picker for upload
     val filePicker = rememberFilePicker { results ->
         results?.let { fileList ->
@@ -48,12 +50,25 @@ fun BrowseScreen(
         }
     }
 
+    // Media picker for photos and videos
+    val mediaPicker = rememberMediaPicker { results ->
+        results?.let { mediaList ->
+            // Convert FilePickerResult to upload format (uri, fileName)
+            val files = mediaList.map { it.uri to it.name }
+            viewModel.sendIntent(UploadFiles(files, false))
+        }
+    }
+
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     LaunchedEffect(Unit) {
         viewModel.uiEffect.collect { uiEffect ->
             when (uiEffect) {
-                BrowseUiEffect.ShowUploadPicker -> {
+                BrowseUiEffect.ShowUploadFilesPicker -> {
                     filePicker()
+                }
+
+                BrowseUiEffect.ShowUploadMediaPicker -> {
+                    mediaPicker()
                 }
             }
         }
