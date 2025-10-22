@@ -189,7 +189,8 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                     }
 
                     override fun getPermissions(): Int {
-                        return 644 // Default file permissions
+                        // rw-r--r-- in binary: 110 100 100
+                        return 0b110_100_100 // 420 in decimal (octal 0644)
                     }
 
                     override fun isFile(): Boolean = true
