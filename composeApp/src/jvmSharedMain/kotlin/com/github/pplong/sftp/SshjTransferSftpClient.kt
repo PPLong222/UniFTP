@@ -29,11 +29,7 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
         callback: DownloadCallback,
         resumeOffset: Long
     ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            // Ensure SFTP client is initialized
-            val sftp = ssh.newStatefulSFTPClient()
-
-            // Get file size
+        ssh.newStatefulSFTPClient().use { sftp ->
             val fileSize = getFileSize(remotePath)
             if (fileSize < 0) {
                 val error = IllegalArgumentException("Failed to get file size for: $remotePath")
@@ -42,7 +38,6 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                 return@withContext false
             }
 
-            // Check if resume offset is valid
             if (resumeOffset > fileSize) {
                 val error = IllegalArgumentException(
                     "Resume offset ($resumeOffset) exceeds file size ($fileSize)"
@@ -51,7 +46,6 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                 callback.onError(error)
                 return@withContext false
             }
-
             // Get output stream from callback
             val outputStreamPair = callback.openOutputStream(fileSize, resumeOffset)
             if (outputStreamPair == null) {
@@ -70,28 +64,22 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                 return@withContext false
             }
 
-            // Determine actual resume offset (use existing file size if available)
-            val actualResumeOffset = if (existingFileSize > 0) existingFileSize else resumeOffset
+            outputStream.use {
+                // Determine actual resume offset (use existing file size if available)
+                val actualResumeOffset =
+                    if (existingFileSize > 0) existingFileSize else resumeOffset
+                // Validate resume offset
+                if (actualResumeOffset > fileSize) {
+                    val error = IllegalArgumentException(
+                        "Existing file size ($actualResumeOffset) exceeds remote file size ($fileSize)"
+                    )
+                    println(error.message)
+                    callback.onError(error)
+                    return@withContext false
+                }
 
-            // Validate resume offset
-            if (actualResumeOffset > fileSize) {
-                val error = IllegalArgumentException(
-                    "Existing file size ($actualResumeOffset) exceeds remote file size ($fileSize)"
-                )
-                println(error.message)
-                callback.onError(error)
-                outputStream.close()
-                return@withContext false
-            }
-
-            // Open remote file for reading
-            val remoteFile = sftp.open(remotePath)
-
-            try {
-                // Create input stream starting from resume offset
-                val inputStream = remoteFile.RemoteFileInputStream(actualResumeOffset)
-
-                try {
+                sftp.open(remotePath).use { remoteFile ->
+                    val inputStream = remoteFile.RemoteFileInputStream(actualResumeOffset)
                     val buffer = ByteArray(BUFFER_SIZE)
                     var bytesRead: Int
                     var totalBytesRead = actualResumeOffset
@@ -101,53 +89,31 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                         callback.onProgress(totalBytesRead, fileSize)
                     }
 
-                    // Read and write data
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        outputStream.write(buffer, 0, bytesRead)
-                        totalBytesRead += bytesRead
+                    inputStream.use {
+                        // Read and write data
+                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            outputStream.write(buffer, 0, bytesRead)
+                            totalBytesRead += bytesRead
 
-                        // Report progress
-                        callback.onProgress(totalBytesRead, fileSize)
+                            // Report progress
+                            callback.onProgress(totalBytesRead, fileSize)
+                        }
+                        outputStream.flush()
+                        val success = totalBytesRead == fileSize
+                        if (success) {
+                            callback.onComplete()
+                            return@withContext true
+                        } else {
+                            val error = IllegalStateException(
+                                "Download incomplete: $totalBytesRead / $fileSize bytes"
+                            )
+                            println(error.message)
+                            callback.onError(error)
+                            return@withContext false
+                        }
                     }
-
-                    outputStream.flush()
-
-                    // Verify download completed successfully
-                    val success = totalBytesRead == fileSize
-                    if (success) {
-                        callback.onComplete()
-                    } else {
-                        val error = IllegalStateException(
-                            "Download incomplete: $totalBytesRead / $fileSize bytes"
-                        )
-                        println(error.message)
-                        callback.onError(error)
-                    }
-
-                    return@withContext success
-                } finally {
-                    try {
-                        inputStream.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                    try {
-                        outputStream.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            } finally {
-                try {
-                    remoteFile.close()
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            callback.onError(e)
-            return@withContext false
         }
     }
 
