@@ -1,5 +1,6 @@
 package com.github.pplong.sftp
 
+import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.sftp.def.FTPFile
 import kotlinx.cinterop.*
 import libssh2.*
@@ -158,5 +159,64 @@ class Libssh2CoreSftpClient : Libssh2SftpBaseClient(), ICoreFTPClient {
         perms.append(if ((mode and LIBSSH2_SFTP_S_IXOTH.toInt()) != 0) 'x' else '-')
 
         return perms.toString()
+    }
+
+    override suspend fun delete(
+        deleteFiles: List<FTPFileUiModel>,
+        onProgress: (removedCount: Int) -> Unit
+    ) {
+        try {
+            val sftpSession = sftp ?: return
+
+            deleteFiles.forEachIndexed { index, ftpFile ->
+                val result = if (ftpFile.isDirectory) {
+                    // Remove directory using libssh2_sftp_rmdir_ex
+                    libssh2_sftp_rmdir_ex(
+                        sftpSession,
+                        ftpFile.path,
+                        ftpFile.path.length.convert()
+                    )
+                } else {
+                    // Remove file using libssh2_sftp_unlink_ex
+                    libssh2_sftp_unlink_ex(
+                        sftpSession,
+                        ftpFile.path,
+                        ftpFile.path.length.convert()
+                    )
+                }
+
+                if (result != 0) {
+                    println("Failed to delete: ${ftpFile.path}")
+                }
+
+                onProgress(index + 1)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override suspend fun mkdir(path: String) {
+        try {
+            val sftpSession = sftp ?: return
+
+            // Create directory with mode 0755 (rwxr-xr-x)
+            val mode = (LIBSSH2_SFTP_S_IRWXU or
+                       LIBSSH2_SFTP_S_IRGRP or LIBSSH2_SFTP_S_IXGRP or
+                       LIBSSH2_SFTP_S_IROTH or LIBSSH2_SFTP_S_IXOTH).convert<Long>()
+
+            val result = libssh2_sftp_mkdir_ex(
+                sftpSession,
+                path,
+                path.length.convert(),
+                mode
+            )
+
+            if (result != 0) {
+                println("Failed to create directory: $path")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }

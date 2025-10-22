@@ -212,6 +212,7 @@ class BrowseViewModel(
         files: List<Pair<String, String>>,
         hasDetectedSameName: Boolean = false
     ) {
+        println("Uploading files: $files")
         if (files.isEmpty()) {
             println("No files selected for upload")
             return
