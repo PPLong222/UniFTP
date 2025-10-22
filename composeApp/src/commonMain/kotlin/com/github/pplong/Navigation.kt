@@ -16,6 +16,8 @@ class BrowseScreenNav(
     val nickname: String?,
     val host: String,
     val user: String,
+    val port: Int,
+    val password: String,
     val downloadDir: String?
 )
 

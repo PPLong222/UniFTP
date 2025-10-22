@@ -73,6 +73,8 @@ kotlin {
             implementation(libs.koin.androidx.compose)
 
             implementation(libs.androidx.room.sqlite.wrapper)
+            implementation(libs.androidx.work.runtime)
+            implementation(libs.koin.androidx.workmanager)
         }
         commonMain.dependencies {
             implementation(compose.runtime)

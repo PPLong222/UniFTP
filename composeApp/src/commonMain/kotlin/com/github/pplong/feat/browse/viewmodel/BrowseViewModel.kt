@@ -14,17 +14,23 @@ import com.github.pplong.feat.browse.toFTPFileUiModel
 import com.github.pplong.feat.browse.ui.BrowseFileLoadingStatus
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.home.ui.FTPServerItem
+import com.github.pplong.feat.transfer.ProgressMonitor
+import com.github.pplong.feat.transfer.ProgressState
+import com.github.pplong.feat.transfer.TransferManagerFactory
 import com.github.pplong.sftp.FTPGlobalSingleton
-import com.github.pplong.sftp.PlatformDownloadCallbackFactory
-import com.github.pplong.sftp.PlatformUploadCallbackFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 class BrowseViewModel(
     private val ftpServer: FTPServerItem
-) : BaseViewModel<BrowseUiState, BrowseUiIntent, UiEffect>() {
+) : BaseViewModel<BrowseUiState, BrowseUiIntent, UiEffect>(), KoinComponent {
     private val manager = FTPGlobalSingleton.manager
+    private val transferManager = TransferManagerFactory.create()
+    private val progressMonitor: ProgressMonitor by inject()
 
     init {
         // TODO: know why we have to pass server here rather than initialState which will lead to crash issue
@@ -44,6 +50,83 @@ class BrowseViewModel(
                     requestStatus = CommonRequestStatus.SUCCESS
                 )
             }
+        }
+        observeTransfers()
+    }
+
+    private fun observeTransfers() {
+        // Observe database for task status changes (low frequency - only for completion/failure)
+        viewModelScope.launch {
+            transferManager.observeTransfers()
+                .collectLatest { transfers ->
+                    println("[BrowseViewModel] Database: ${transfers.size} transfers")
+
+                    val transferMap = transfers.associateBy { it.remotePath }
+
+                    setState {
+                        copy(fileList = fileList.map { fileModel ->
+                            val task = transferMap[fileModel.file.path]
+
+                            when {
+                                task == null -> fileModel
+                                task.status == com.github.pplong.feat.transfer.model.TransferStatus.COMPLETED -> {
+                                    fileModel.copy(status = BrowseFileLoadingStatus.Success)
+                                }
+                                task.status == com.github.pplong.feat.transfer.model.TransferStatus.FAILED -> {
+                                    fileModel.copy(status = BrowseFileLoadingStatus.Failed(task.errorMessage))
+                                }
+                                task.status == com.github.pplong.feat.transfer.model.TransferStatus.CANCELLED -> {
+                                    fileModel.copy(status = BrowseFileLoadingStatus.None)
+                                }
+                                else -> fileModel
+                            }
+                        })
+                    }
+                }
+        }
+
+        // Observe WorkManager for real-time progress (high frequency)
+        observeRealtimeProgress()
+    }
+
+    private fun observeRealtimeProgress() {
+        println("[BrowseViewModel] Starting real-time progress observation")
+        viewModelScope.launch {
+            progressMonitor.observeAllProgress()
+                .collectLatest { progressUpdates ->
+                    println("[BrowseViewModel] Received progress updates: ${progressUpdates.size} items")
+
+                    if (progressUpdates.isEmpty()) {
+                        println("[BrowseViewModel] Empty progress updates, skipping")
+                        return@collectLatest
+                    }
+
+                    println("[BrowseViewModel] WorkManager: ${progressUpdates.size} progress updates")
+                    progressUpdates.forEach { update ->
+                        println("[BrowseViewModel]   - ${update.fileName}: ${(update.progress * 100).toInt()}% [${update.state}]")
+                    }
+
+                    val progressMap = progressUpdates.associateBy { it.remotePath }
+
+                    setState {
+                        copy(fileList = fileList.map { fileModel ->
+                            val progress = progressMap[fileModel.file.path]
+
+                            if (progress != null) {
+                                val newStatus = when (progress.state) {
+                                    ProgressState.WAITING -> BrowseFileLoadingStatus.Waiting
+                                    ProgressState.RUNNING -> BrowseFileLoadingStatus.Loading(progress.progress)
+                                    ProgressState.SUCCEEDED -> BrowseFileLoadingStatus.Success
+                                    ProgressState.FAILED -> BrowseFileLoadingStatus.Failed("Transfer failed")
+                                    ProgressState.CANCELLED -> BrowseFileLoadingStatus.None
+                                }
+                                fileModel.copy(status = newStatus)
+                            } else {
+                                fileModel
+                            }
+                        })
+                    }
+                }
         }
     }
 
@@ -81,10 +164,31 @@ class BrowseViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val curFileList =
                 manager.list(path).map { FTPFileSelectableUiModel(file = it.toFTPFileUiModel()) }
+
+            // Preserve loading status for files that are being transferred
+            val oldStatusMap = uiState.value.fileList
+                .filter {
+                    it.status is BrowseFileLoadingStatus.Loading ||
+                            it.status is BrowseFileLoadingStatus.Waiting
+                }
+                .associateBy { it.file.path }
+
+            val updatedFileList = curFileList.map { fileModel ->
+                // Restore loading status if this file was being transferred
+                val oldStatus = oldStatusMap[fileModel.file.path]?.status
+                if (oldStatus is BrowseFileLoadingStatus.Loading ||
+                    oldStatus is BrowseFileLoadingStatus.Waiting
+                ) {
+                    fileModel.copy(status = oldStatus)
+                } else {
+                    fileModel
+                }
+            }
+
             setState {
                 copy(
                     path = path,
-                    fileList = curFileList,
+                    fileList = updatedFileList,
                     requestStatus = CommonRequestStatus.SUCCESS,
                     dialogState = BrowseDialogState.None,
                     toolbarStatus = BrowseToolbarStatus.STANDARD
@@ -128,14 +232,13 @@ class BrowseViewModel(
         val downloadFileList =
             uiState.value.fileList.filter { it.status == BrowseFileLoadingStatus.Checked }
                 .map { it.file }
+
         setState {
             copy(
                 toolbarStatus = BrowseToolbarStatus.STANDARD,
                 fileList = fileList.map {
                     if (it.status == BrowseFileLoadingStatus.Checked) {
-                        it.copy(
-                            status = BrowseFileLoadingStatus.Waiting
-                        )
+                        it.copy(status = BrowseFileLoadingStatus.Waiting)
                     } else {
                         it.copy(
                             status = BrowseFileLoadingStatus.None
@@ -151,55 +254,44 @@ class BrowseViewModel(
             return
         }
 
+        // Enqueue downloads using background transfer manager
         viewModelScope.launch(Dispatchers.IO) {
-            // Get platform-specific download callback factory
-            val callbackFactory = PlatformDownloadCallbackFactory.get()
+            val taskMap = mutableMapOf<String, String>()
 
-            manager.download(
-                list = downloadFileList,
-                downloadDir = downloadDir,
-                callbackFactory = callbackFactory,
-                onProgress = { file, progress ->
-                    setState {
-                        copy(fileList = fileList.map {
-                            if (it.file == file) {
-                                it.copy(status = BrowseFileLoadingStatus.Loading(progress))
-                            } else {
-                                it
-                            }
-                        })
-                    }
-                },
-                onFileComplete = { file ->
-                    println("Download completed: ${file.name}")
-                    setState {
-                        copy(fileList = fileList.map {
-                            if (it.file == file) {
-                                it.copy(status = BrowseFileLoadingStatus.Success)
-                            } else {
-                                it
-                            }
-                        })
-                    }
-                },
-                onFileError = { file, error ->
-                    println("Download failed for ${file.name}: ${error.message}")
-                    error.printStackTrace()
-                    setState {
-                        copy(fileList = fileList.map {
-                            if (it.file == file) {
-                                it.copy(
-                                    status = BrowseFileLoadingStatus.Failed(
-                                        error.message ?: "Unknown error"
-                                    ),
-                                )
-                            } else {
-                                it
-                            }
-                        })
-                    }
+            downloadFileList.forEach { file ->
+                // Skip directories
+                if (file.isDirectory) {
+                    return@forEach
                 }
-            )
+
+                try {
+                    val taskId = transferManager.enqueueDownload(
+                        fileName = file.name,
+                        remotePath = file.path,
+                        downloadDir = downloadDir,
+                        serverHost = ftpServer.host,
+                        serverPort = ftpServer.port,
+                        serverUsername = ftpServer.user,
+                        serverPassword = ftpServer.password,
+                        fileSize = file.size
+                    )
+
+                    // Save task ID mapping
+                    taskMap[file.path] = taskId
+                    println("Download enqueued: ${file.name}, taskId: $taskId")
+                } catch (e: Exception) {
+                    println("Failed to enqueue download: ${file.name}, error: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+
+            // Update state with task mappings
+            setState {
+                copy(transferTaskMap = transferTaskMap + taskMap)
+            }
+
+            // Show toast or notification that downloads have been enqueued
+            println("${downloadFileList.size} downloads enqueued in background")
         }
     }
 
@@ -231,31 +323,54 @@ class BrowseViewModel(
         // Get current remote directory
         val remoteDir = uiState.value.path
 
+        // Enqueue uploads using background transfer manager
         viewModelScope.launch(Dispatchers.IO) {
-            // Get platform-specific upload callback factory
-            val callbackFactory = PlatformUploadCallbackFactory.get()
+            val taskMap = mutableMapOf<String, String>()
 
-            // Track upload progress for UI
-            val uploadingFiles = files.associate { it to 0f }.toMutableMap()
+            files.forEach { (localUri, fileName) ->
+                try {
+                    // Build remote file path
+                    val remotePath = if (remoteDir.endsWith("/")) {
+                        "$remoteDir$fileName"
+                    } else {
+                        "$remoteDir/$fileName"
+                    }
 
-            manager.upload(
-                files = files,
-                remoteDir = remoteDir,
-                callbackFactory = callbackFactory,
-                onProgress = { fileInfo, progress ->
-                    uploadingFiles[fileInfo] = progress
-                    println("Uploading ${fileInfo.second}: ${(progress * 100).toInt()}%")
-                },
-                onFileComplete = { fileInfo ->
-                    println("Upload completed: ${fileInfo.second}")
-                    // Refresh file list to show newly uploaded file
-                    refresh()
-                },
-                onFileError = { fileInfo, error ->
-                    println("Upload failed for ${fileInfo.second}: ${error.message}")
-                    error.printStackTrace()
+                    // TODO: Get file size - for now use 0 as placeholder
+                    // You may need to add a helper function to get file size from localUri
+                    val fileSize = 0L
+
+                    val taskId = transferManager.enqueueUpload(
+                        fileName = fileName,
+                        localUri = localUri,
+                        remotePath = remotePath,
+                        serverHost = ftpServer.host,
+                        serverPort = ftpServer.port,
+                        serverUsername = ftpServer.user,
+                        serverPassword = ftpServer.password,
+                        fileSize = fileSize
+                    )
+
+                    // Save task ID mapping using remote path
+                    taskMap[remotePath] = taskId
+                    println("Upload enqueued: $fileName, taskId: $taskId")
+                } catch (e: Exception) {
+                    println("Failed to enqueue upload: $fileName, error: ${e.message}")
+                    e.printStackTrace()
                 }
-            )
+            }
+
+            // Update state with task mappings
+            setState {
+                copy(transferTaskMap = transferTaskMap + taskMap)
+            }
+
+            // Show toast or notification that uploads have been enqueued
+            println("${files.size} uploads enqueued in background")
+
+            // Refresh file list after a delay to show newly uploaded files
+            kotlinx.coroutines.delay(2000)
+            refresh()
         }
     }
 

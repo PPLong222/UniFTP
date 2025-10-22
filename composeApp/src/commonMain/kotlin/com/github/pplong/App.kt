@@ -44,11 +44,11 @@ fun App() {
                     FTPServerItem(
                         id = 0,
                         host = args.host,
-                        password = "",
+                        password = args.password,
                         user = args.user,
                         nickname = args.nickname,
                         lastConnectedTime = 0L,
-                        port = 0,
+                        port = args.port,
                         downloadDir = args.downloadDir
                     ),
                     navController

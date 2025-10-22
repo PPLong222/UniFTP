@@ -2,20 +2,27 @@ import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
+import androidx.room.TypeConverters
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.github.pplong.feat.home.model.FTPServer
 import com.github.pplong.feat.home.model.FTPServerDao
+import com.github.pplong.feat.transfer.model.TransferDirectionConverters
+import com.github.pplong.feat.transfer.model.TransferStatusConverters
+import com.github.pplong.feat.transfer.model.TransferTask
+import com.github.pplong.feat.transfer.model.TransferTaskDao
 import com.github.pplong.test.TestDao
 import com.github.pplong.test.TestEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 
-@Database(entities = [TestEntity::class, FTPServer::class], version = 1)
+@Database(entities = [TestEntity::class, FTPServer::class, TransferTask::class], version = 2)
+@TypeConverters(TransferDirectionConverters::class, TransferStatusConverters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase: RoomDatabase() {
     abstract fun getTestDao(): TestDao
     abstract fun getFTPServerDao(): FTPServerDao
+    abstract fun getTransferTaskDao(): TransferTaskDao
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -29,5 +36,6 @@ fun getRoomDatabase(
     return builder
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
+        .fallbackToDestructiveMigration(true) // Allow database recreation on version change
         .build()
 }

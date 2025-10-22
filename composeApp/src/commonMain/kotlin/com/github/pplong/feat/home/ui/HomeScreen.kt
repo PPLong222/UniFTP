@@ -55,6 +55,8 @@ fun HomeScreen(navController: NavHostController) {
                             effect.server.nickname,
                             effect.server.host,
                             effect.server.user,
+                            effect.server.port,
+                            effect.server.password,
                             effect.server.downloadDir
                         )
                     )
