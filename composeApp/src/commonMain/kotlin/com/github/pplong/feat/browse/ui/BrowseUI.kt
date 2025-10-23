@@ -191,14 +191,22 @@ fun BrowseMainContent(
 
 @Composable
 fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
-    LazyColumn {
-        items(uiState.fileList) { file ->
-            FTPFileInfo(
-                file,
-                onIntent,
-                uiState.toolbarStatus,
-            )
+    Box {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(uiState.fileList) { file ->
+                FTPFileInfo(
+                    file,
+                    onIntent,
+                    uiState.toolbarStatus,
+                )
+            }
         }
+
+        BrowseFloatingActionMenu(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            barStatus = uiState.toolbarStatus,
+            onIntent = onIntent,
+        )
     }
 }
 

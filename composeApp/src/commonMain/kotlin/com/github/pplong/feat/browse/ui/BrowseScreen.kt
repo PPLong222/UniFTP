@@ -91,12 +91,12 @@ fun BrowseScreen(
                 onIntent = viewModel::sendIntent,
             )
         },
-        floatingActionButton = {
-            BrowseFloatingToolbar(
-                barStatus = state.toolbarStatus,
-                onIntent = viewModel::sendIntent
-            )
-        }
+//        floatingActionButton = {
+//            BrowseFloatingToolbar(
+//                barStatus = state.toolbarStatus,
+//                onIntent = viewModel::sendIntent
+//            )
+//        }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             DraggablePathIndicator(

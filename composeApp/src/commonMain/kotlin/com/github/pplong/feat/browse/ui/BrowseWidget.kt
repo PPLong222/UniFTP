@@ -10,21 +10,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
@@ -42,10 +49,12 @@ import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.UPLOAD_FILE
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.UPLOAD_MEDIA
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.ic_arrow_downward
 import uniftp.composeapp.generated.resources.ic_arrow_upward
+import uniftp.composeapp.generated.resources.ic_close
 import uniftp.composeapp.generated.resources.ic_create_new_folder
 import uniftp.composeapp.generated.resources.ic_delete
 import uniftp.composeapp.generated.resources.ic_draft
@@ -140,6 +149,7 @@ private fun buildPath(paths: List<String>, index: Int): String {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
+@Deprecated("Use BrowseFloatingToolbar instead")
 fun BrowseFloatingToolbar(
     barStatus: BrowseToolbarStatus,
     onIntent: (BrowseUiIntent) -> Unit,
@@ -216,7 +226,55 @@ fun BrowseFloatingToolbar(
             )
         }
     )
+}
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BrowseFloatingActionMenu(
+    modifier: Modifier,
+    barStatus: BrowseToolbarStatus,
+    onIntent: (BrowseUiIntent) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val actionList =
+        if (barStatus == BrowseToolbarStatus.STANDARD) standardFabsMenuList else fileSelectionFabsMenuList
+    val focusRequester = remember { FocusRequester() }
+    FloatingActionButtonMenu(
+        modifier = modifier,
+        expanded = expanded,
+        button = {
+            ToggleFloatingActionButton(
+                checked = expanded,
+                onCheckedChange = { expanded = !expanded }
+            ) {
+                val imageVector = when {
+                    checkedProgress > 0.5f -> Res.drawable.ic_close
+                    barStatus == BrowseToolbarStatus.STANDARD -> Res.drawable.ic_arrow_upward
+                    else -> Res.drawable.ic_arrow_downward
+                }
+                Icon(
+                    painter = painterResource(imageVector),
+                    contentDescription = null
+                )
+            }
+        }
+    ) {
+        for (action in actionList) {
+            FloatingActionButtonMenuItem(
+                onClick = {
+                    onIntent(action.mapToUiIntent())
+                    expanded = !expanded
+                },
+                text = { Text(stringResource(action.titleRes)) },
+                icon = {
+                    Icon(
+                        painterResource(action.iconRes),
+                        contentDescription = null
+                    )
+                }
+            )
+        }
+    }
 }
 
 @Composable

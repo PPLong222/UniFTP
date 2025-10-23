@@ -14,16 +14,20 @@
     <string name="unselect">Unselect</string>
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
     <string name="delete_files">Delete Files</string>
     <string name="replace_all">Replace All</string>
     <string name="folder_name">Folder Name</string>
+    <string name="download">Download</string>
+    <string name="upload_files">Upload Files</string>
+    <string name="upload_media">Upload Medias</string>
 
     <!--Dialog-->
     <string name="remove_dialog_tip">Are you sure to remove these %1$s files?</string>
     <string name="removing_with_placeholder">Removing: %1$s/%2$s </string>
     <string name="file_name_already_exist_title">File name already exists</string>
     <string name="replace_dialog_tip">File name already exists within this folder. Do you want to replace it?</string>
-    <string name="create_folder_title">Create A Folder</string>
+    <string name="create_folder_title">Create Folder</string>
     <string name="create_folder_duplicate_tip">Same name folder already exists</string>
 
 </resources>
