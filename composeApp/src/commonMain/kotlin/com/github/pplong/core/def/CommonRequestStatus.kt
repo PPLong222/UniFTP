@@ -4,5 +4,9 @@ enum class CommonRequestStatus {
     INITIAL,
     REQUESTING,
     SUCCESS,
-    FAILED
+    FAILED;
+
+    fun isLoading() = this == REQUESTING
+
+    fun isSuccess() = this == SUCCESS
 }

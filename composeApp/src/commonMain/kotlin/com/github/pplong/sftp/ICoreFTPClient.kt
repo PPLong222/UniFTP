@@ -10,4 +10,6 @@ interface ICoreFTPClient : IBaseFTPClient {
 
     suspend fun delete(deleteFiles: List<FTPFileUiModel>, onProgress: (removedCount: Int) -> Unit)
     suspend fun mkdir(path: String)
+
+    suspend fun find(query: String, searchPath: String = "/"): List<FTPFile>
 }

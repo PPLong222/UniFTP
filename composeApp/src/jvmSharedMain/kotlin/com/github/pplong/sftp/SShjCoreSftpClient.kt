@@ -2,6 +2,8 @@ package com.github.pplong.sftp
 
 import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.sftp.def.FTPFile
+import kotlinx.coroutines.GlobalScope.coroutineContext
+import kotlinx.coroutines.ensureActive
 import net.schmizz.sshj.sftp.FileMode
 import net.schmizz.sshj.sftp.RemoteResourceInfo
 import net.schmizz.sshj.xfer.FilePermission
@@ -47,6 +49,86 @@ open class SShjCoreSftpClient : SshjSftpBaseClient(), ICoreFTPClient {
         return ssh.newStatefulSFTPClient().use { sftp ->
             sftp.mkdir(path)
         }
+    }
+
+    /**
+     * Search for files matching the query string
+     * @param query Search query (supports wildcards like *.txt, or partial filename match)
+     * @param searchPath Starting directory for search (default is root "/")
+     * @return List of matching FTPFile objects
+     */
+    override suspend fun find(query: String, searchPath: String): List<FTPFile> {
+        ensureSSHConnection()
+        return ssh.newStatefulSFTPClient().use { sftp ->
+            val results = mutableListOf<FTPFile>()
+
+            // Recursive search function
+            fun searchDirectory(currentPath: String) {
+                try {
+                    val files = sftp.ls(currentPath)
+
+                    for (remoteFile in files) {
+                        coroutineContext.ensureActive()
+                        val name = remoteFile.name
+
+                        // Skip "." and ".." entries
+                        if (name == "." || name == "..") continue
+
+                        val ftpFile = convertToFTPFile(remoteFile, currentPath)
+
+                        if (ftpFile != null) {
+                            // Check if file matches query
+                            if (matchesQuery(name, query)) {
+                                results.add(ftpFile)
+                            }
+
+                            // Recursively search subdirectories
+                            if (remoteFile.isDirectory) {
+                                try {
+                                    searchDirectory(ftpFile.path)
+                                } catch (e: Exception) {
+                                    // Skip directories we can't access (permission denied, etc.)
+                                    println("[SShjCoreSftpClient] Cannot access directory: ${ftpFile.path}, error: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("[SShjCoreSftpClient] Error searching directory: $currentPath, error: ${e.message}")
+                }
+            }
+
+            // Start recursive search from searchPath
+            searchDirectory(searchPath)
+            results
+        }
+    }
+
+    /**
+     * Check if filename matches query
+     * Supports wildcards: * (any characters), ? (single character)
+     * Also supports partial string matching (case-insensitive)
+     */
+    private fun matchesQuery(filename: String, query: String): Boolean {
+        if (query.isEmpty()) return true
+
+        // Convert query to regex pattern
+        val pattern = when {
+            // If query contains wildcards, use pattern matching
+            query.contains('*') || query.contains('?') -> {
+                val regexPattern = query
+                    .replace(".", "\\.")
+                    .replace("*", ".*")
+                    .replace("?", ".")
+                Regex(regexPattern, RegexOption.IGNORE_CASE)
+            }
+            // Otherwise, use simple contains matching (case-insensitive)
+            else -> {
+                return filename.contains(query, ignoreCase = true)
+            }
+        }
+
+        return pattern.matches(filename)
     }
 
     /**

@@ -15,7 +15,8 @@ data class BrowseUiState(
     val toolbarStatus: BrowseToolbarStatus = BrowseToolbarStatus.STANDARD,
     val dialogState: BrowseDialogState = BrowseDialogState.None,
     // Map of file path to transfer task ID for tracking progress
-    val transferTaskMap: Map<String, String> = emptyMap()
+    val transferTaskMap: Map<String, String> = emptyMap(),
+    val searchState: SearchState = SearchState()
 ) : UiState
 
 sealed class BrowseUiIntent : UiIntent {
@@ -26,6 +27,7 @@ sealed class BrowseUiIntent : UiIntent {
     // Appbar
     data class ChangeBrowseMode(val appbarStatus: BrowseToolbarStatus): BrowseUiIntent()
     data class SelectFile(val file: FTPFileUiModel, val checked: Boolean) : BrowseUiIntent()
+    data class StartSearch(val query: String, val local: Boolean = true) : BrowseUiIntent()
 
     // Toolbar
     data object Download : BrowseUiIntent()
@@ -70,3 +72,8 @@ sealed class BrowseDialogState {
         val requestStatus: CommonRequestStatus = CommonRequestStatus.INITIAL
     ) : BrowseDialogState()
 }
+
+data class SearchState(
+    val loadingStatus: CommonRequestStatus = CommonRequestStatus.INITIAL,
+    val result: List<FTPFileUiModel> = emptyList()
+)

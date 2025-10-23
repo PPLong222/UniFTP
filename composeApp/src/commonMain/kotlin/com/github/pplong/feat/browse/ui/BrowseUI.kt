@@ -51,6 +51,7 @@ import uniftp.composeapp.generated.resources.ic_close
 import uniftp.composeapp.generated.resources.ic_data_off
 import uniftp.composeapp.generated.resources.ic_folder
 import uniftp.composeapp.generated.resources.ic_multiple
+import uniftp.composeapp.generated.resources.ic_search
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -236,6 +237,7 @@ fun BrowseTopAppBar(
     appbarStatus: BrowseToolbarStatus,
     scrollBehavior: TopAppBarScrollBehavior,
     onIntent: (BrowseUiIntent) -> Unit,
+    onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -254,6 +256,15 @@ fun BrowseTopAppBar(
 
         },
         actions = {
+            IconButton(
+                onClick = onSearchClick
+
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_search),
+                    contentDescription = null
+                )
+            }
             IconButton(
                 onClick = {
                     onIntent(BrowseUiIntent.ChangeBrowseMode(appbarStatus))
@@ -281,7 +292,8 @@ fun PreviewBrowseTopBar() {
         null,
         scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(),
         onIntent = {},
-        appbarStatus = BrowseToolbarStatus.STANDARD
+        appbarStatus = BrowseToolbarStatus.STANDARD,
+        onSearchClick = {},
     )
 }
 

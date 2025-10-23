@@ -222,4 +222,10 @@ class FTPClientManager(
     ) {
         coreFTPClient.mkdir(path)
     }
+
+    suspend fun find(
+        query: String
+    ): List<FTPFile> {
+        return coreFTPClient.find(query)
+    }
 }

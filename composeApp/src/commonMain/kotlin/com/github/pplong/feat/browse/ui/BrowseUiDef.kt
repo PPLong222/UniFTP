@@ -13,6 +13,8 @@ import uniftp.composeapp.generated.resources.ic_file
 import uniftp.composeapp.generated.resources.ic_image_upload
 import uniftp.composeapp.generated.resources.ic_refresh
 import uniftp.composeapp.generated.resources.nickname
+import uniftp.composeapp.generated.resources.search_all_places
+import uniftp.composeapp.generated.resources.search_current_folder
 import uniftp.composeapp.generated.resources.upload_files
 import uniftp.composeapp.generated.resources.upload_media
 
@@ -47,6 +49,13 @@ enum class BrowseToolbarBarAction(
     DOWNLOAD(Res.string.download, Res.drawable.ic_arrow_downward),
     UPLOAD_FILE(Res.string.upload_files, Res.drawable.ic_file),
     UPLOAD_MEDIA(Res.string.upload_media, Res.drawable.ic_image_upload)
+}
+
+enum class BrowseSearchBarDirectorSelection(
+    val titleRes: StringResource,
+) {
+    CURRENT_DIR(Res.string.search_current_folder),
+    ALL_PLACES(Res.string.search_all_places)
 }
 
 val fileSelectionFabsMenuList = listOf(

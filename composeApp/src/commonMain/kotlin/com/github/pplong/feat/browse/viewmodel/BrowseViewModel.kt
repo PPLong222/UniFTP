@@ -10,6 +10,7 @@ import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
 import com.github.pplong.feat.browse.FTPFileSelectableUiModel
 import com.github.pplong.feat.browse.FTPFileUiModel
+import com.github.pplong.feat.browse.SearchState
 import com.github.pplong.feat.browse.toFTPFileUiModel
 import com.github.pplong.feat.browse.ui.BrowseFileLoadingStatus
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
@@ -20,6 +21,7 @@ import com.github.pplong.feat.transfer.TransferManagerFactory
 import com.github.pplong.sftp.FTPGlobalSingleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
@@ -28,6 +30,7 @@ import org.koin.core.component.inject
 class BrowseViewModel(
     private val ftpServer: FTPServerItem
 ) : BaseViewModel<BrowseUiState, BrowseUiIntent, UiEffect>(), KoinComponent {
+    private var searchJob: Job? = null
     private val manager = FTPGlobalSingleton.manager
     private val transferManager = TransferManagerFactory.create()
     private val progressMonitor: ProgressMonitor by inject()
@@ -72,12 +75,15 @@ class BrowseViewModel(
                                 task.status == com.github.pplong.feat.transfer.model.TransferStatus.COMPLETED -> {
                                     fileModel.copy(status = BrowseFileLoadingStatus.Success)
                                 }
+
                                 task.status == com.github.pplong.feat.transfer.model.TransferStatus.FAILED -> {
                                     fileModel.copy(status = BrowseFileLoadingStatus.Failed(task.errorMessage))
                                 }
+
                                 task.status == com.github.pplong.feat.transfer.model.TransferStatus.CANCELLED -> {
                                     fileModel.copy(status = BrowseFileLoadingStatus.None)
                                 }
+
                                 else -> fileModel
                             }
                         })
@@ -115,7 +121,10 @@ class BrowseViewModel(
                             if (progress != null) {
                                 val newStatus = when (progress.state) {
                                     ProgressState.WAITING -> BrowseFileLoadingStatus.Waiting
-                                    ProgressState.RUNNING -> BrowseFileLoadingStatus.Loading(progress.progress)
+                                    ProgressState.RUNNING -> BrowseFileLoadingStatus.Loading(
+                                        progress.progress
+                                    )
+
                                     ProgressState.SUCCEEDED -> BrowseFileLoadingStatus.Success
                                     ProgressState.FAILED -> BrowseFileLoadingStatus.Failed("Transfer failed")
                                     ProgressState.CANCELLED -> BrowseFileLoadingStatus.None
@@ -152,6 +161,7 @@ class BrowseViewModel(
             is BrowseUiIntent.OnCreateFolderNameChanged -> onFolderNameChanged(intent.folderName)
             BrowseUiIntent.ShowCreateFolder -> showCreateFolderDialog()
             BrowseUiIntent.ShowUploadMediaPicker -> showUploadMediaPicker()
+            is BrowseUiIntent.StartSearch -> startSearch(intent.query, intent.local)
         }
     }
 
@@ -453,4 +463,48 @@ class BrowseViewModel(
     private fun showUploadMediaPicker() {
         sendEffect { BrowseUiEffect.ShowUploadMediaPicker }
     }
+
+    private fun onSearchIconClicked() {
+        setState { copy(searchState = SearchState()) }
+    }
+
+    private fun startSearch(query: String, local: Boolean) {
+        if (local) {
+            setState {
+                copy(
+                    searchState = searchState.copy(
+                        result = fileList.map { it.file }
+                            .filter { it.name.contains(query) },
+                        loadingStatus = CommonRequestStatus.SUCCESS
+                    )
+                )
+            }
+            return
+        }
+
+        searchJob?.let {
+            if (it.isActive) {
+                it.cancel()
+            }
+        }
+
+        setState { copy(searchState = searchState.copy(loadingStatus = CommonRequestStatus.REQUESTING)) }
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                manager.find(query)
+            }.onSuccess { list ->
+                setState {
+                    copy(
+                        searchState = searchState.copy(
+                            loadingStatus = CommonRequestStatus.SUCCESS,
+                            result = list.map { it.toFTPFileUiModel() })
+                    )
+                }
+            }.onFailure {
+
+            }
+        }
+
+    }
+
 }

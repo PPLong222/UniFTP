@@ -2,13 +2,26 @@ package com.github.pplong.feat.browse.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -17,13 +30,17 @@ import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +54,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.pplong.feat.browse.BrowseUiIntent
+import com.github.pplong.feat.browse.FTPFileSelectableUiModel
+import com.github.pplong.feat.browse.FTPFileUiModel
+import com.github.pplong.feat.browse.SearchState
 import com.github.pplong.feat.browse.mapToUiIntent
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.CREATE_FOLDER
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.DELETE
@@ -61,6 +81,8 @@ import uniftp.composeapp.generated.resources.ic_draft
 import uniftp.composeapp.generated.resources.ic_image_upload
 import uniftp.composeapp.generated.resources.ic_path
 import uniftp.composeapp.generated.resources.ic_refresh
+import uniftp.composeapp.generated.resources.ic_search
+import uniftp.composeapp.generated.resources.search
 
 @Composable
 fun DraggablePathIndicator(
@@ -273,6 +295,107 @@ fun BrowseFloatingActionMenu(
                     )
                 }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BoxScope.BrowseSearchBar(
+    searchState: SearchState,
+    cancel: () -> Unit,
+    onSearch: (String, Boolean) -> Unit,
+) {
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    SearchBar(
+        modifier = Modifier.align(Alignment.TopCenter),
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                onSearch = { onSearch(searchQuery, selectedIndex == 0) },
+                expanded = true,
+                onExpandedChange = { },
+                placeholder = { Text(stringResource(Res.string.search)) },
+                leadingIcon = {
+                    Icon(
+                        painterResource(Res.drawable.ic_search),
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = cancel) {
+                        Icon(
+                            painterResource(Res.drawable.ic_close),
+                            contentDescription = null
+                        )
+                    }
+                }
+            )
+        },
+        expanded = true,
+        onExpandedChange = {
+        }
+    ) {
+        Row(
+            Modifier.padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        ) {
+            BrowseSearchBarDirectorSelection.entries.forEachIndexed { index, selection ->
+                ToggleButton(
+                    checked = selectedIndex == index,
+                    onCheckedChange = {
+                        selectedIndex = index
+                        if (searchQuery.isNotEmpty()) {
+                            onSearch(searchQuery, selectedIndex == 0)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    shapes =
+                        when (index) {
+                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                            BrowseSearchBarDirectorSelection.entries.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                        },
+                ) {
+                    Text(stringResource(selection.titleRes))
+                }
+            }
+        }
+
+
+        if (searchState.loadingStatus.isLoading()) {
+            Spacer(modifier = Modifier.padding(top = 64.dp))
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ContainedLoadingIndicator(
+                    modifier = Modifier.size(64.dp).align(Alignment.Center)
+                )
+            }
+        } else if (searchState.loadingStatus.isSuccess()) {
+            SearchResultList(searchState.result, {})
+        }
+    }
+}
+
+@Composable
+fun SearchResultList(
+    fileList: List<FTPFileUiModel>,
+    onIntent: (BrowseUiIntent) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(fileList) { file ->
+            FTPFileInfo(
+                FTPFileSelectableUiModel(file),
+                onIntent,
+                BrowseToolbarStatus.STANDARD,
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

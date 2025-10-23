@@ -21,6 +21,10 @@
     <string name="download">Download</string>
     <string name="upload_files">Upload Files</string>
     <string name="upload_media">Upload Medias</string>
+    <string name="search">Search</string>
+
+    <string name="search_current_folder">Current Folder</string>
+    <string name="search_all_places">All Places</string>
 
     <!--Dialog-->
     <string name="remove_dialog_tip">Are you sure to remove these %1$s files?</string>

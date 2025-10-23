@@ -3,6 +3,7 @@ package com.github.pplong.feat.browse.ui
 import BrowseViewModel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -12,6 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -40,6 +44,8 @@ fun BrowseScreen(
 ) {
     val viewModel = koinViewModel<BrowseViewModel>(parameters = { parametersOf(server) })
     val state by viewModel.uiState.collectAsState()
+
+    var searchActive by remember { mutableStateOf(false) }
 
     // File picker for upload
     val filePicker = rememberFilePicker { results ->
@@ -79,17 +85,20 @@ fun BrowseScreen(
     }
     Scaffold(
         topBar = {
-            BrowseTopAppBar(
-                state.server.nickname ?: state.server.host.plus("@").plus(state.server.user),
-                subtitleText = if (state.server.nickname == null) {
-                    null
-                } else {
-                    state.server.user.plus("@").plus(state.server.host)
-                },
-                scrollBehavior = scrollBehavior,
-                appbarStatus = state.toolbarStatus,
-                onIntent = viewModel::sendIntent,
-            )
+            if (!searchActive) {
+                BrowseTopAppBar(
+                    state.server.nickname ?: state.server.host.plus("@").plus(state.server.user),
+                    subtitleText = if (state.server.nickname == null) {
+                        null
+                    } else {
+                        state.server.user.plus("@").plus(state.server.host)
+                    },
+                    scrollBehavior = scrollBehavior,
+                    appbarStatus = state.toolbarStatus,
+                    onIntent = viewModel::sendIntent,
+                    onSearchClick = { searchActive = true }
+                )
+            }
         },
 //        floatingActionButton = {
 //            BrowseFloatingToolbar(
@@ -98,19 +107,38 @@ fun BrowseScreen(
 //            )
 //        }
     ) { paddingValues ->
-        Column(modifier = Modifier.padding(paddingValues)) {
-            DraggablePathIndicator(
-                state.path,
-                { newPath -> viewModel.sendIntent(Jump(newPath)) },
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Box(
-                contentAlignment = Alignment.TopCenter,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-            ) {
-                BrowseMainContent(state, viewModel::sendIntent)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.padding(paddingValues)) {
+                DraggablePathIndicator(
+                    state.path,
+                    { newPath -> viewModel.sendIntent(Jump(newPath)) },
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Box(
+                    contentAlignment = Alignment.TopCenter,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                ) {
+                    BrowseMainContent(state, viewModel::sendIntent)
+                }
+            }
+
+            if (searchActive) {
+                BrowseSearchBar(
+                    cancel = {
+                        searchActive = false
+                    },
+                    onSearch = { query, local ->
+                        viewModel.sendIntent(
+                            BrowseUiIntent.StartSearch(
+                                query,
+                                local
+                            )
+                        )
+                    },
+                    searchState = state.searchState,
+                )
             }
         }
     }
