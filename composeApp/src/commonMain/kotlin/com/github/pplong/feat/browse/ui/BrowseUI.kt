@@ -3,6 +3,7 @@ package com.github.pplong.feat.browse.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,12 +45,15 @@ import com.github.pplong.feat.browse.FTPFileSelectableUiModel
 import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.home.ui.FTPServerItem
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
+import uniftp.composeapp.generated.resources.empty_folder
 import uniftp.composeapp.generated.resources.ic_check
 import uniftp.composeapp.generated.resources.ic_close
 import uniftp.composeapp.generated.resources.ic_data_off
 import uniftp.composeapp.generated.resources.ic_folder
+import uniftp.composeapp.generated.resources.ic_folder_open
 import uniftp.composeapp.generated.resources.ic_multiple
 import uniftp.composeapp.generated.resources.ic_search
 
@@ -204,20 +208,25 @@ fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
             isRefreshing = uiState.requestStatus == CommonRequestStatus.REQUESTING,
             onRefresh = { onIntent(BrowseUiIntent.Refresh) }
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-                    .overscroll(overscrollBehavior),
-            ) {
-                items(uiState.fileList) { file ->
-                    FTPFileInfo(
-                        file,
-                        onIntent,
-                        uiState.toolbarStatus,
-                    )
+            if (uiState.fileList.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize()
+                        .overscroll(overscrollBehavior),
+                ) {
+                    items(uiState.fileList) { file ->
+                        FTPFileInfo(
+                            file,
+                            onIntent,
+                            uiState.toolbarStatus,
+                        )
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
                 }
-                item {
-                    Spacer(modifier = Modifier.height(32.dp))
-                }
+            } else {
+                // Empty Folder Tip
+                EmptyFolderTip()
             }
         }
 
@@ -281,6 +290,27 @@ fun BrowseTopAppBar(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     )
+}
+
+@Composable
+fun EmptyFolderTip() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(top = 64.dp)
+        ) {
+            Icon(
+                painterResource(Res.drawable.ic_folder_open),
+                contentDescription = null,
+                modifier = Modifier.size(128.dp)
+            )
+            Text(
+                stringResource(Res.string.empty_folder),
+                style = MaterialTheme.typography.displayMedium,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

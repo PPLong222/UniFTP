@@ -22,6 +22,7 @@
     <string name="upload_files">Upload Files</string>
     <string name="upload_media">Upload Medias</string>
     <string name="search">Search</string>
+    <string name="empty_folder">Empty Folder</string>
 
     <string name="search_current_folder">Current Folder</string>
     <string name="search_all_places">All Places</string>
