@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.overscroll
+import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -24,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -189,16 +193,30 @@ fun BrowseMainContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
+    val overscrollBehavior = rememberOverscrollEffect()
+
     Box {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(uiState.fileList) { file ->
-                FTPFileInfo(
-                    file,
-                    onIntent,
-                    uiState.toolbarStatus,
-                )
+        PullToRefreshBox(
+            isRefreshing = uiState.requestStatus == CommonRequestStatus.REQUESTING,
+            onRefresh = { onIntent(BrowseUiIntent.Refresh) }
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+                    .overscroll(overscrollBehavior),
+            ) {
+                items(uiState.fileList) { file ->
+                    FTPFileInfo(
+                        file,
+                        onIntent,
+                        uiState.toolbarStatus,
+                    )
+                }
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
         }
 
