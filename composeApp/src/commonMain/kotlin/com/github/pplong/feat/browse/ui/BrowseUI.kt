@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.core.def.FileType
+import com.github.pplong.core.def.toDrawableRes
 import com.github.pplong.core.utils.DateUtil
 import com.github.pplong.core.utils.FileUtil
 import com.github.pplong.feat.browse.BrowseUiIntent
@@ -43,7 +45,6 @@ import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.ic_check
 import uniftp.composeapp.generated.resources.ic_close
 import uniftp.composeapp.generated.resources.ic_data_off
-import uniftp.composeapp.generated.resources.ic_file
 import uniftp.composeapp.generated.resources.ic_folder
 import uniftp.composeapp.generated.resources.ic_multiple
 
@@ -158,7 +159,7 @@ fun FTPFileInfo(
 @Composable
 fun FileIcon(fileName: String) {
     Icon(
-        painter = painterResource(Res.drawable.ic_file),
+        painter = painterResource(FileType.fromFileName(fileName).toDrawableRes()),
         contentDescription = null,
         modifier = Modifier.size(48.dp)
     )

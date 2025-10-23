@@ -49,7 +49,6 @@ import uniftp.composeapp.generated.resources.ic_arrow_upward
 import uniftp.composeapp.generated.resources.ic_create_new_folder
 import uniftp.composeapp.generated.resources.ic_delete
 import uniftp.composeapp.generated.resources.ic_draft
-import uniftp.composeapp.generated.resources.ic_image
 import uniftp.composeapp.generated.resources.ic_image_upload
 import uniftp.composeapp.generated.resources.ic_path
 import uniftp.composeapp.generated.resources.ic_refresh
@@ -231,8 +230,8 @@ private fun mapActionToResource(action: BrowseToolbarBarAction): Painter {
         SHARE -> painterResource(Res.drawable.ic_refresh)
         INFO -> painterResource(Res.drawable.ic_refresh)
         UPLOAD_FILE -> painterResource(Res.drawable.ic_draft)
-        UPLOAD_MEDIA -> painterResource(Res.drawable.ic_image)
-        BrowseToolbarBarAction.DOWNLOAD -> painterResource(Res.drawable.ic_image_upload)
+        UPLOAD_MEDIA -> painterResource(Res.drawable.ic_image_upload)
+        BrowseToolbarBarAction.DOWNLOAD -> painterResource(Res.drawable.ic_arrow_downward)
     }
 }
 
