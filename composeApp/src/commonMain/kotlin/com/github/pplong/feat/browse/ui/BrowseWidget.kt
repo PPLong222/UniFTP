@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -299,7 +300,10 @@ fun BrowseFloatingActionMenu(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalComposeUiApi::class
+)
 @Composable
 fun BoxScope.BrowseSearchBar(
     searchState: SearchState,
@@ -315,7 +319,9 @@ fun BoxScope.BrowseSearchBar(
             SearchBarDefaults.InputField(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
-                onSearch = { onSearch(searchQuery, selectedIndex == 0) },
+                onSearch = {
+                    onSearch(searchQuery, selectedIndex == 0)
+                },
                 expanded = true,
                 onExpandedChange = { },
                 placeholder = { Text(stringResource(Res.string.search)) },
@@ -336,7 +342,10 @@ fun BoxScope.BrowseSearchBar(
             )
         },
         expanded = true,
-        onExpandedChange = {
+        onExpandedChange = { expanded ->
+            if (!expanded) {
+                cancel()
+            }
         }
     ) {
         Row(
