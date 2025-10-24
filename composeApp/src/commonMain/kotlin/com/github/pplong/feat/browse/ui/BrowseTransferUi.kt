@@ -4,11 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
@@ -24,16 +27,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.pplong.core.utils.FileUtil
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.FTPFileTransferringUiModel
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import uniftp.composeapp.generated.resources.Res
@@ -63,10 +65,16 @@ fun BrowseTransferBottomSheet(
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
-    var selectedIndex by remember { mutableStateOf(0) }
+    val pagerState = rememberPagerState(
+        pageCount = { BrowseTransferType.entries.size }
+    )
+
+    val scope = rememberCoroutineScope()
+
     ModalBottomSheet(
         sheetState = sheetState,
         onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxSize()
     ) {
         Row(
             Modifier.padding(horizontal = 64.dp),
@@ -74,9 +82,11 @@ fun BrowseTransferBottomSheet(
         ) {
             BrowseTransferType.entries.forEachIndexed { index, selection ->
                 ToggleButton(
-                    checked = selectedIndex == index,
+                    checked = pagerState.currentPage == index,
                     onCheckedChange = {
-                        selectedIndex = index
+                        scope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     shapes =
@@ -91,26 +101,38 @@ fun BrowseTransferBottomSheet(
             }
         }
 
-        LazyColumn {
-            item {
-                Text(
-                    stringResource(if (selectedIndex == 0) Res.string.downloading else Res.string.uploading),
-                    modifier = Modifier.padding(bottom = 8.dp, start = 12.dp),
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
-            items(transferringList) { file ->
-                FTPFileTransferringItem(file, {})
-            }
-            item {
-                Text(
-                    stringResource(Res.string.completed),
-                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
-                    style = MaterialTheme.typography.labelMedium
-                )
-            }
-            items(transferredList) { file ->
-                FTPFileTransferredItem(file, {})
+
+
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 1,
+            verticalAlignment = Alignment.Top
+        ) { page ->
+            val type =
+                if (page == 0) BrowseTransferType.DOWNLOAD else BrowseTransferType.UPLOAD
+            val transferringTypeList = transferringList.filter { it.type == type }
+            val transferredTypeList = transferredList.filter { it.type == type }
+            LazyColumn {
+                item {
+                    Text(
+                        stringResource(if (page == 0) Res.string.downloading else Res.string.uploading),
+                        modifier = Modifier.padding(bottom = 8.dp, start = 12.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+                items(transferringTypeList) { file ->
+                    FTPFileTransferringItem(file, {})
+                }
+                item {
+                    Text(
+                        stringResource(Res.string.completed),
+                        modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+                items(transferredTypeList) { file ->
+                    FTPFileTransferredItem(file, {})
+                }
             }
         }
     }
