@@ -19,6 +19,7 @@
     <string name="replace_all">Replace All</string>
     <string name="folder_name">Folder Name</string>
     <string name="download">Download</string>
+    <string name="upload">Upload</string>
     <string name="upload_files">Upload Files</string>
     <string name="upload_media">Upload Medias</string>
     <string name="search">Search</string>

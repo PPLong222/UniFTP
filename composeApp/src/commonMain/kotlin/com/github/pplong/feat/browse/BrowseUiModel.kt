@@ -1,6 +1,7 @@
 package com.github.pplong.feat.browse
 
 import com.github.pplong.feat.browse.ui.BrowseFileLoadingStatus
+import com.github.pplong.feat.browse.ui.BrowseTransferType
 
 data class FTPFileUiModel(
     val name: String,
@@ -23,3 +24,9 @@ enum class BrowseCreateFolderStatus {
     NONE,
     DUPLICATE
 }
+
+data class FTPFileTransferringUiModel(
+    val file: FTPFileUiModel,
+    val progress: Float,
+    val type: BrowseTransferType
+)

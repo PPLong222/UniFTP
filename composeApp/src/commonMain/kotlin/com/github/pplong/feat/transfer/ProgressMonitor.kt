@@ -1,5 +1,6 @@
 package com.github.pplong.feat.transfer
 
+import com.github.pplong.feat.transfer.model.TransferDirection
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -9,7 +10,8 @@ data class ProgressUpdate(
     val remotePath: String,
     val fileName: String,
     val progress: Float,  // 0.0 - 1.0
-    val state: ProgressState
+    val state: ProgressState,
+    val direction: TransferDirection
 )
 
 /**

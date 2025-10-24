@@ -16,7 +16,8 @@ data class BrowseUiState(
     val dialogState: BrowseDialogState = BrowseDialogState.None,
     // Map of file path to transfer task ID for tracking progress
     val transferTaskMap: Map<String, String> = emptyMap(),
-    val searchState: SearchState = SearchState()
+    val searchState: SearchState = SearchState(),
+    val transferringFile: List<FTPFileTransferringUiModel> = emptyList()
 ) : UiState
 
 sealed class BrowseUiIntent : UiIntent {

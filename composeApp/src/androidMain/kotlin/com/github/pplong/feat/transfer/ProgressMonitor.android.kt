@@ -91,7 +91,8 @@ actual class ProgressMonitor(
             remotePath = task.remotePath,
             fileName = task.fileName,
             progress = progress,
-            state = state
+            state = state,
+            direction = task.direction
         )
     }
 }

@@ -33,6 +33,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.LoadingIndicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -206,6 +210,9 @@ fun BrowseMainContent(
 fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
     val overscrollBehavior = rememberOverscrollEffect()
     val state = rememberPullToRefreshState()
+
+    var transferPanelVisible by remember { mutableStateOf(false) }
+
     Box {
         PullToRefreshBox(
             isRefreshing = uiState.requestStatus == CommonRequestStatus.REQUESTING,
@@ -241,11 +248,27 @@ fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
             }
         }
 
+        BrowseTransferFloatingStatusButton(
+            modifier = Modifier.align(Alignment.BottomStart),
+            onClick = {
+                transferPanelVisible = true
+            },
+        )
+
         BrowseFloatingActionMenu(
             modifier = Modifier.align(Alignment.BottomEnd),
             barStatus = uiState.toolbarStatus,
             onIntent = onIntent,
         )
+
+        if (transferPanelVisible) {
+            BrowseTransferBottomSheet(
+                onDismiss = {
+                    transferPanelVisible = false
+                },
+                uiState.transferringFile
+            )
+        }
     }
 }
 

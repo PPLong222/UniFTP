@@ -14,10 +14,12 @@ import com.github.pplong.feat.browse.SearchState
 import com.github.pplong.feat.browse.toFTPFileUiModel
 import com.github.pplong.feat.browse.ui.BrowseFileLoadingStatus
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
+import com.github.pplong.feat.browse.ui.BrowseTransferType
 import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.feat.transfer.ProgressMonitor
 import com.github.pplong.feat.transfer.ProgressState
 import com.github.pplong.feat.transfer.TransferManagerFactory
+import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.sftp.FTPGlobalSingleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -114,26 +116,54 @@ class BrowseViewModel(
 
                     val progressMap = progressUpdates.associateBy { it.remotePath }
 
-                    setState {
-                        copy(fileList = fileList.map { fileModel ->
-                            val progress = progressMap[fileModel.file.path]
+                    // Build transferringFile list from active progress updates
+                    val transferringFiles = progressUpdates
+                        .filter { it.state == ProgressState.RUNNING || it.state == ProgressState.WAITING }
+                        .map { update ->
+                            com.github.pplong.feat.browse.FTPFileTransferringUiModel(
+                                file = FTPFileUiModel(
+                                    name = update.fileName,
+                                    path = update.remotePath,
+                                    parentPath = update.remotePath.substringBeforeLast("/", ""),
+                                    isDirectory = false,
+                                    size = 0L,  // We don't have size info in ProgressUpdate
+                                    modifiedTime = 0L,
+                                    permissions = "",
+                                    owner = "",
+                                    group = ""
+                                ),
+                                progress = update.progress,
+                                type = when (update.direction) {
+                                    TransferDirection.DOWNLOAD -> BrowseTransferType.DOWNLOAD
 
-                            if (progress != null) {
-                                val newStatus = when (progress.state) {
-                                    ProgressState.WAITING -> BrowseFileLoadingStatus.Waiting
-                                    ProgressState.RUNNING -> BrowseFileLoadingStatus.Loading(
-                                        progress.progress
-                                    )
-
-                                    ProgressState.SUCCEEDED -> BrowseFileLoadingStatus.Success
-                                    ProgressState.FAILED -> BrowseFileLoadingStatus.Failed("Transfer failed")
-                                    ProgressState.CANCELLED -> BrowseFileLoadingStatus.None
+                                    TransferDirection.UPLOAD -> BrowseTransferType.UPLOAD
                                 }
-                                fileModel.copy(status = newStatus)
-                            } else {
-                                fileModel
+                            )
+                        }
+
+                    setState {
+                        copy(
+                            transferringFile = transferringFiles,
+                            fileList = fileList.map { fileModel ->
+                                val progress = progressMap[fileModel.file.path]
+
+                                if (progress != null) {
+                                    val newStatus = when (progress.state) {
+                                        ProgressState.WAITING -> BrowseFileLoadingStatus.Waiting
+                                        ProgressState.RUNNING -> BrowseFileLoadingStatus.Loading(
+                                            progress.progress
+                                        )
+
+                                        ProgressState.SUCCEEDED -> BrowseFileLoadingStatus.Success
+                                        ProgressState.FAILED -> BrowseFileLoadingStatus.Failed("Transfer failed")
+                                        ProgressState.CANCELLED -> BrowseFileLoadingStatus.None
+                                    }
+                                    fileModel.copy(status = newStatus)
+                                } else {
+                                    fileModel
+                                }
                             }
-                        })
+                        )
                     }
                 }
         }
@@ -506,5 +536,6 @@ class BrowseViewModel(
         }
 
     }
+
 
 }
