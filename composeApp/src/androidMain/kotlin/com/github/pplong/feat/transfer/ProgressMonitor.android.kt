@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.github.pplong.feat.transfer.model.TransferTaskDao
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 /**
  * Android implementation using WorkManager
@@ -70,7 +70,8 @@ actual class ProgressMonitor(
         workInfo: WorkInfo
     ): ProgressUpdate? {
         // Get task details from database
-        val task = transferTaskDao.getById(taskId) ?: return null
+        // TODO performance
+        val task = transferTaskDao.getTasksEmbeddedById(taskId)?.task ?: return null
 
         val state = when (workInfo.state) {
             WorkInfo.State.ENQUEUED -> ProgressState.WAITING
@@ -87,12 +88,19 @@ actual class ProgressMonitor(
             0f
         }
 
+        val speed = if (workInfo.state == WorkInfo.State.RUNNING) {
+            workInfo.progress.getLong(TransferWorker.SPEED, 0)
+        } else {
+            0L
+        }
+
         return ProgressUpdate(
             remotePath = task.remotePath,
             fileName = task.fileName,
             progress = progress,
             state = state,
-            direction = task.direction
+            direction = task.direction,
+            speed = speed
         )
     }
 }

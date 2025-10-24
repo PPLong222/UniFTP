@@ -51,8 +51,7 @@ fun BrowseScreen(
     val filePicker = rememberFilePicker { results ->
         results?.let { fileList ->
             // Convert FilePickerResult to upload format (uri, fileName)
-            val files = fileList.map { it.uri to it.name }
-            viewModel.sendIntent(UploadFiles(files, false))
+            viewModel.sendIntent(UploadFiles(fileList, false))
         }
     }
 
@@ -60,8 +59,7 @@ fun BrowseScreen(
     val mediaPicker = rememberMediaPicker { results ->
         results?.let { mediaList ->
             // Convert FilePickerResult to upload format (uri, fileName)
-            val files = mediaList.map { it.uri to it.name }
-            viewModel.sendIntent(UploadFiles(files, false))
+            viewModel.sendIntent(UploadFiles(mediaList, false))
         }
     }
 

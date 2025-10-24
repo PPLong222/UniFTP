@@ -24,6 +24,9 @@
     <string name="upload_media">Upload Medias</string>
     <string name="search">Search</string>
     <string name="empty_folder">Empty Folder</string>
+    <string name="downloading">Downloading</string>
+    <string name="uploading">Uploading</string>
+    <string name="completed">Completed</string>
 
     <string name="search_current_folder">Current Folder</string>
     <string name="search_all_places">All Places</string>

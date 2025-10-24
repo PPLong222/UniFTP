@@ -1,6 +1,7 @@
 package com.github.pplong.feat.transfer
 
-import com.github.pplong.feat.transfer.model.TransferTask
+import com.github.pplong.feat.browse.FTPFileUiModel
+import com.github.pplong.feat.transfer.model.TransferTaskEmbedded
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -12,14 +13,8 @@ interface TransferManager {
      * Enqueue/start a download task
      */
     suspend fun enqueueDownload(
-        fileName: String,
-        remotePath: String,
-        downloadDir: String,
-        serverHost: String,
-        serverPort: Int,
-        serverUsername: String,
-        serverPassword: String,
-        fileSize: Long
+        file: FTPFileUiModel,
+        serverId: Long
     ): String
 
     /**
@@ -29,11 +24,9 @@ interface TransferManager {
         fileName: String,
         localUri: String,
         remotePath: String,
-        serverHost: String,
-        serverPort: Int,
-        serverUsername: String,
-        serverPassword: String,
-        fileSize: Long
+        fileSize: Long,
+        serverId: Long,
+        lastModifiedTime: Long
     ): String
 
     /**
@@ -44,7 +37,7 @@ interface TransferManager {
     /**
      * Observe all transfers
      */
-    fun observeTransfers(): Flow<List<TransferTask>>
+    fun observeTransfers(serverId: Long): Flow<List<TransferTaskEmbedded>>
 
     /**
      * Clear completed transfers

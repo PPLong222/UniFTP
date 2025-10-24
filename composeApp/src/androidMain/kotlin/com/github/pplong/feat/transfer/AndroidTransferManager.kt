@@ -8,16 +8,17 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.feat.transfer.model.TransferTask
+import com.github.pplong.feat.transfer.model.TransferTaskEmbedded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -71,14 +72,8 @@ class AndroidTransferManager(
      * Enqueue a download task
      */
     suspend fun enqueueDownload(
-        fileName: String,
-        remotePath: String,
-        downloadDir: String,
-        serverHost: String,
-        serverPort: Int,
-        serverUsername: String,
-        serverPassword: String,
-        fileSize: Long
+        file: FTPFileUiModel,
+        serverId: Long
     ): String {
         val taskId = UUID.randomUUID().toString()
         val currentTime = System.currentTimeMillis()
@@ -88,18 +83,12 @@ class AndroidTransferManager(
             id = taskId,
             direction = TransferDirection.DOWNLOAD,
             status = TransferStatus.PENDING,
-            fileName = fileName,
+            fileName = file.name,
             localUri = "", // Not used for downloads
-            remotePath = remotePath,
-            transferredBytes = 0L,
-            totalBytes = fileSize,
-            serverHost = serverHost,
-            serverPort = serverPort,
-            serverUsername = serverUsername,
-            serverPassword = serverPassword,
-            downloadDir = downloadDir,
-            createdAt = currentTime,
-            updatedAt = currentTime
+            remotePath = file.path,
+            size = file.size,
+            serverId = serverId,
+            fileLastModified = file.modifiedTime,
         )
 
         // Save to database
@@ -118,11 +107,9 @@ class AndroidTransferManager(
         fileName: String,
         localUri: String,
         remotePath: String,
-        serverHost: String,
-        serverPort: Int,
-        serverUsername: String,
-        serverPassword: String,
-        fileSize: Long
+        fileSize: Long,
+        serverId: Long,
+        lastModified: Long
     ): String {
         val taskId = UUID.randomUUID().toString()
         val currentTime = System.currentTimeMillis()
@@ -135,14 +122,9 @@ class AndroidTransferManager(
             fileName = fileName,
             localUri = localUri,
             remotePath = remotePath,
-            transferredBytes = 0L,
-            totalBytes = fileSize,
-            serverHost = serverHost,
-            serverPort = serverPort,
-            serverUsername = serverUsername,
-            serverPassword = serverPassword,
-            createdAt = currentTime,
-            updatedAt = currentTime
+            size = fileSize,
+            serverId = serverId,
+            fileLastModified = lastModified,
         )
 
         // Save to database
@@ -184,48 +166,6 @@ class AndroidTransferManager(
         println("[AndroidTransferManager] Enqueued work: taskId=${task.id}, workId=${workRequest.id}")
     }
 
-    /**
-     * Observe WorkManager progress for a specific task
-     */
-    fun observeTaskProgress(taskId: String): Flow<TransferProgressEvent?> {
-        val workId = taskWorkMap[taskId] ?: return kotlinx.coroutines.flow.flowOf(null)
-
-        return workManager.getWorkInfoByIdFlow(workId).map { workInfo ->
-            workInfo?.let {
-                // Get task info from database for remotePath
-                val task = transferTaskDao.getById(taskId)
-                TransferProgressEvent(
-                    taskId = taskId,
-                    remotePath = task?.remotePath ?: "",
-                    progress = it.progress.getInt(TransferWorker.PROGRESS_KEY, 0),
-                    status = it.state
-                )
-            }
-        }
-    }
-
-    /**
-     * Observe all active transfer works' progress
-     */
-    fun observeAllProgress(): Flow<List<TransferProgressEvent>> {
-        return workManager.getWorkInfosByTagFlow("transfer")
-            .map { workInfos ->
-                workInfos.mapNotNull { workInfo ->
-                    val taskId = workInfo.progress.getString(TransferWorker.KEY_TASK_ID)
-                        ?: workInfo.tags.find { it.startsWith("transfer_") }?.substring(9)
-                        ?: return@mapNotNull null
-
-                    val task = transferTaskDao.getById(taskId) ?: return@mapNotNull null
-
-                    TransferProgressEvent(
-                        taskId = taskId,
-                        remotePath = task.remotePath,
-                        progress = workInfo.progress.getInt(TransferWorker.PROGRESS_KEY, 0),
-                        status = workInfo.state
-                    )
-                }
-            }
-    }
 
     /**
      * Cancel a transfer task
@@ -238,7 +178,6 @@ class AndroidTransferManager(
         transferTaskDao.updateStatus(
             taskId = taskId,
             status = TransferStatus.CANCELLED,
-            updatedAt = System.currentTimeMillis()
         )
     }
 
@@ -246,24 +185,23 @@ class AndroidTransferManager(
      * Retry a failed transfer
      */
     suspend fun retryTransfer(taskId: String) {
-        val task = transferTaskDao.getById(taskId) ?: return
-
-        // Reset task status
-        transferTaskDao.updateStatus(
-            taskId = taskId,
-            status = TransferStatus.PENDING,
-            updatedAt = System.currentTimeMillis()
-        )
-
-        // Re-enqueue work
-        enqueueWork(task)
+//        val task = transferTaskDao.getTasksEmbeddedById(taskId) ?: return
+//
+//        // Reset task status
+//        transferTaskDao.updateStatus(
+//            taskId = taskId,
+//            status = TransferStatus.PENDING,
+//        )
+//
+//        // Re-enqueue work
+//        enqueueWork(task)
     }
 
     /**
      * Get all transfer tasks as Flow
      */
-    fun observeTransfers(): Flow<List<TransferTask>> {
-        return transferTaskDao.observeAll()
+    fun observeTransfers(serverId: Long): Flow<List<TransferTaskEmbedded>> {
+        return transferTaskDao.getTasksEmbeddedByServerId(serverId)
     }
 
     /**

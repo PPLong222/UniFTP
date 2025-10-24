@@ -11,6 +11,7 @@ import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.feat.transfer.model.TransferTask
 import com.github.pplong.feat.transfer.model.TransferTaskDao
+import com.github.pplong.feat.transfer.model.TransferTaskEmbedded
 import com.github.pplong.sftp.AndroidDownloadCallbackFactory
 import com.github.pplong.sftp.AndroidUploadCallbackFactory
 import com.github.pplong.sftp.FTPClientManager
@@ -37,6 +38,7 @@ class TransferWorker(
     companion object {
         const val KEY_TASK_ID = "task_id"
         const val PROGRESS_KEY = "progress"
+        const val SPEED = "speed"
         const val PROGRESS_MAX = 100
     }
 
@@ -51,22 +53,21 @@ class TransferWorker(
         println("[TransferWorker] Starting transfer for task: $taskId")
 
         // Get transfer task from database
-        val task = transferTaskDao.getById(taskId)
+        val task = transferTaskDao.getTasksEmbeddedById(taskId)
             ?: return Result.failure(workDataOf("error" to "Task not found"))
 
         // Set as foreground service with notification
-        setForeground(createForegroundInfo(task))
+        setForeground(createForegroundInfo(task.task))
 
         // Update task status to IN_PROGRESS
         transferTaskDao.updateStatus(
             taskId = taskId,
             status = TransferStatus.IN_PROGRESS,
-            updatedAt = System.currentTimeMillis()
         )
 
         // Execute transfer based on direction
         return try {
-            val transferResult = when (task.direction) {
+            val transferResult = when (task.task.direction) {
                 TransferDirection.DOWNLOAD -> executeDownload(task)
                 TransferDirection.UPLOAD -> executeUpload(task)
             }
@@ -77,15 +78,10 @@ class TransferWorker(
             e.printStackTrace()
 
             // Update task with error
-            transferTaskDao.updateError(
-                taskId = taskId,
-                status = TransferStatus.FAILED,
-                errorMessage = e.message ?: "Unknown error",
-                updatedAt = System.currentTimeMillis()
-            )
+
 
             // Show error notification
-            notificationHelper.showErrorNotification(task, e.message)
+            notificationHelper.showErrorNotification(task.task, e.message)
 
             Result.retry() // Retry on failure
         }
@@ -94,15 +90,16 @@ class TransferWorker(
     /**
      * Execute download task
      */
-    private suspend fun executeDownload(task: TransferTask): Result {
-        println("[TransferWorker] Executing download: ${task.fileName}")
+    private suspend fun executeDownload(taskEmbedded: TransferTaskEmbedded): Result {
+        println("[TransferWorker] Executing download: ${taskEmbedded.task.fileName}")
 
+        val server = taskEmbedded.server
         // Create FTP client manager
         val config = FTPConfig(
-            host = task.serverHost,
-            port = task.serverPort,
-            username = task.serverUsername,
-            password = task.serverPassword
+            host = server.host,
+            port = server.port,
+            username = server.user,
+            password = server.password
         )
 
         // TODO: try to use manager already exist
@@ -126,39 +123,38 @@ class TransferWorker(
 
             val result = try {
                 val callback = WorkerDownloadCallback(
-                    task = task,
+                    taskEmbedded = taskEmbedded,
                     callbackFactory = callbackFactory,
                     transferTaskDao = transferTaskDao,
                     notificationHelper = notificationHelper,
-                    onSetProgress = { progress ->
-                        setProgressAsync(workDataOf(PROGRESS_KEY to progress))
+                    onSetProgress = { progress, speed ->
+                        setProgressAsync(workDataOf(PROGRESS_KEY to progress, SPEED to speed))
                     }
                 )
 
                 // Start download with resume support
-                val success = if (task.transferredBytes > 0) {
-                    transferClient.downloadFileWithResume(
-                        remotePath = task.remotePath,
-                        callback = callback,
-                        resumeOffset = task.transferredBytes
-                    )
-                } else {
-                    transferClient.downloadFile(
-                        remotePath = task.remotePath,
-                        callback = callback
-                    )
-                }
+//                val success = if (task.transferredBytes > 0) {
+//                    transferClient.downloadFileWithResume(
+//                        remotePath = task.remotePath,
+//                        callback = callback,
+//                        resumeOffset = task.transferredBytes
+//                    )
+//                } else {
+                // TODO complete downloadwithreumse
+                val success = transferClient.downloadFile(
+                    remotePath = taskEmbedded.task.remotePath,
+                    callback = callback
+                )
 
                 if (success) {
                     // Update task status to COMPLETED
                     transferTaskDao.updateStatus(
-                        taskId = task.id,
+                        taskId = taskEmbedded.task.id,
                         status = TransferStatus.COMPLETED,
-                        updatedAt = System.currentTimeMillis()
                     )
 
                     // Show completion notification
-                    notificationHelper.showCompletionNotification(task)
+                    notificationHelper.showCompletionNotification(taskEmbedded.task)
 
                     Result.success()
                 } else {
@@ -176,15 +172,18 @@ class TransferWorker(
     /**
      * Execute upload task
      */
-    private suspend fun executeUpload(task: TransferTask): Result {
+    private suspend fun executeUpload(taskEmbedded: TransferTaskEmbedded): Result {
+
+        val server = taskEmbedded.server
+        val task = taskEmbedded.task
         println("[TransferWorker] Executing upload: ${task.fileName}")
 
         // Create FTP client manager
         val config = FTPConfig(
-            host = task.serverHost,
-            port = task.serverPort,
-            username = task.serverUsername,
-            password = task.serverPassword
+            host = server.host,
+            port = server.port,
+            username = server.user,
+            password = server.password
         )
 
         val manager = FTPClientManager(config)
@@ -211,8 +210,8 @@ class TransferWorker(
                     callbackFactory = callbackFactory,
                     transferTaskDao = transferTaskDao,
                     notificationHelper = notificationHelper,
-                    onSetProgress = { progress ->
-                        setProgressAsync(workDataOf(PROGRESS_KEY to progress))
+                    onSetProgress = { progress, speed ->
+                        setProgressAsync(workDataOf(PROGRESS_KEY to progress, SPEED to speed))
                     }
                 )
 
@@ -227,7 +226,6 @@ class TransferWorker(
                     transferTaskDao.updateStatus(
                         taskId = task.id,
                         status = TransferStatus.COMPLETED,
-                        updatedAt = System.currentTimeMillis()
                     )
 
                     // Show completion notification

@@ -4,6 +4,7 @@ import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.arch.mvi.UiIntent
 import com.github.pplong.core.arch.mvi.UiState
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.core.utils.FilePickerResult
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.home.ui.FTPServerItem
 
@@ -17,7 +18,8 @@ data class BrowseUiState(
     // Map of file path to transfer task ID for tracking progress
     val transferTaskMap: Map<String, String> = emptyMap(),
     val searchState: SearchState = SearchState(),
-    val transferringFile: List<FTPFileTransferringUiModel> = emptyList()
+    val transferringFile: List<FTPFileTransferringUiModel> = emptyList(),
+    val transferredFile: List<FTPFileTransferringUiModel> = emptyList()
 ) : UiState
 
 sealed class BrowseUiIntent : UiIntent {
@@ -38,7 +40,7 @@ sealed class BrowseUiIntent : UiIntent {
 
     // Upload with selected files
     data class UploadFiles(
-        val files: List<Pair<String, String>>, // Pair of (uri, fileName)
+        val files: List<FilePickerResult>, // Pair of (uri, fileName)
         val detectSameName: Boolean = false
     ) : BrowseUiIntent()
 
@@ -64,7 +66,7 @@ sealed class BrowseDialogState {
     ) : BrowseDialogState()
 
     data class FileNameDuplicate(
-        val files: List<Pair<String, String>>
+        val files: List<FilePickerResult>
     ) : BrowseDialogState()
 
     data class CreateFolder(

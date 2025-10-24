@@ -266,7 +266,8 @@ fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
                 onDismiss = {
                     transferPanelVisible = false
                 },
-                uiState.transferringFile
+                uiState.transferringFile,
+                uiState.transferredFile
             )
         }
     }

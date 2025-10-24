@@ -1,8 +1,12 @@
 package com.github.pplong.feat.transfer.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
+import com.github.pplong.feat.home.model.FTPServer
 
 /**
  * Transfer direction enum
@@ -45,7 +49,19 @@ class TransferStatusConverters {
  * Transfer task entity for Room database
  * Stores transfer progress for resumable uploads/downloads
  */
-@Entity(tableName = "transfer_tasks")
+@Entity(
+    tableName = "transfer_tasks",
+    foreignKeys = [
+        ForeignKey(
+            entity = FTPServer::class,
+            parentColumns = ["id"],
+            childColumns = ["serverId"],
+            onDelete = ForeignKey.CASCADE,  // 删除服务器时级联删除任务
+            onUpdate = ForeignKey.CASCADE   // 更新服务器 ID 时级联更新
+        )
+    ],
+    indices = [Index(value = ["serverId"])]  // 为外键创建索引，提升查询性能
+)
 data class TransferTask(
     @PrimaryKey
     val id: String,  // Unique task ID (UUID)
@@ -59,35 +75,12 @@ data class TransferTask(
     val remotePath: String,  // Full remote path on SFTP server
 
     // Transfer progress
-    val transferredBytes: Long,
-    val totalBytes: Long,
+    val size: Long,
+    @ColumnInfo
+    val serverId: Long,
 
-    // FTP server connection info (needed for resume)
-    val serverHost: String,
-    val serverPort: Int,
-    val serverUsername: String,
-    val serverPassword: String,  // TODO: Consider encrypting this
-
-    // Optional: Download directory for downloads
-    val downloadDir: String? = null,
-
-    // Timestamps
-    val createdAt: Long,
-    val updatedAt: Long,
-
-    // Error information
-    val errorMessage: String? = null
+    val fileLastModified: Long,
 ) {
-    /**
-     * Calculate transfer progress (0.0 - 1.0)
-     */
-    val progress: Float
-        get() = if (totalBytes > 0) {
-            transferredBytes.toFloat() / totalBytes.toFloat()
-        } else {
-            0f
-        }
-
     /**
      * Check if transfer is complete
      */
@@ -99,12 +92,4 @@ data class TransferTask(
      */
     val isActive: Boolean
         get() = status == TransferStatus.PENDING || status == TransferStatus.IN_PROGRESS
-
-    /**
-     * Check if transfer can be resumed
-     */
-    val canResume: Boolean
-        get() = (status == TransferStatus.PAUSED || status == TransferStatus.FAILED)
-                && transferredBytes > 0
-                && transferredBytes < totalBytes
 }

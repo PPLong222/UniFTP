@@ -13,6 +13,7 @@ object HomeScreenNav
 
 @Serializable
 class BrowseScreenNav(
+    val id: Long,
     val nickname: String?,
     val host: String,
     val user: String,

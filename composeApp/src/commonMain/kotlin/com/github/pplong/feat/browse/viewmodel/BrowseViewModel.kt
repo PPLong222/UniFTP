@@ -2,6 +2,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.core.utils.FilePickerResult
 import com.github.pplong.core.utils.appendFilePath
 import com.github.pplong.feat.browse.BrowseCreateFolderStatus
 import com.github.pplong.feat.browse.BrowseDialogState
@@ -9,6 +10,7 @@ import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.BrowseUiState
 import com.github.pplong.feat.browse.FTPFileSelectableUiModel
+import com.github.pplong.feat.browse.FTPFileTransferringUiModel
 import com.github.pplong.feat.browse.FTPFileUiModel
 import com.github.pplong.feat.browse.SearchState
 import com.github.pplong.feat.browse.toFTPFileUiModel
@@ -20,10 +22,12 @@ import com.github.pplong.feat.transfer.ProgressMonitor
 import com.github.pplong.feat.transfer.ProgressState
 import com.github.pplong.feat.transfer.TransferManagerFactory
 import com.github.pplong.feat.transfer.model.TransferDirection
+import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.sftp.FTPGlobalSingleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
@@ -62,34 +66,30 @@ class BrowseViewModel(
     private fun observeTransfers() {
         // Observe database for task status changes (low frequency - only for completion/failure)
         viewModelScope.launch {
-            transferManager.observeTransfers()
+            transferManager.observeTransfers(ftpServer.id)
                 .collectLatest { transfers ->
                     println("[BrowseViewModel] Database: ${transfers.size} transfers")
-
-                    val transferMap = transfers.associateBy { it.remotePath }
-
-                    setState {
-                        copy(fileList = fileList.map { fileModel ->
-                            val task = transferMap[fileModel.file.path]
-
-                            when {
-                                task == null -> fileModel
-                                task.status == com.github.pplong.feat.transfer.model.TransferStatus.COMPLETED -> {
-                                    fileModel.copy(status = BrowseFileLoadingStatus.Success)
-                                }
-
-                                task.status == com.github.pplong.feat.transfer.model.TransferStatus.FAILED -> {
-                                    fileModel.copy(status = BrowseFileLoadingStatus.Failed(task.errorMessage))
-                                }
-
-                                task.status == com.github.pplong.feat.transfer.model.TransferStatus.CANCELLED -> {
-                                    fileModel.copy(status = BrowseFileLoadingStatus.None)
-                                }
-
-                                else -> fileModel
+                    val transferredList =
+                        transfers.filter { it.server.id == ftpServer.id && it.task.status == TransferStatus.COMPLETED }
+                            .map {
+                                FTPFileTransferringUiModel(
+                                    file = FTPFileUiModel(
+                                        name = it.task.fileName,
+                                        path = "",
+                                        parentPath = "",
+                                        isDirectory = false,
+                                        size = it.task.size,
+                                        modifiedTime = it.task.fileLastModified,
+                                        permissions = "",
+                                        owner = "",
+                                        group = ""
+                                    ),
+                                    progress = 1.0f,
+                                    type = if (it.task.direction == TransferDirection.DOWNLOAD) BrowseTransferType.DOWNLOAD else BrowseTransferType.UPLOAD,
+                                    speed = 0
+                                )
                             }
-                        })
-                    }
+                    setState { copy(transferredFile = transferredList) }
                 }
         }
 
@@ -120,13 +120,13 @@ class BrowseViewModel(
                     val transferringFiles = progressUpdates
                         .filter { it.state == ProgressState.RUNNING || it.state == ProgressState.WAITING }
                         .map { update ->
-                            com.github.pplong.feat.browse.FTPFileTransferringUiModel(
+                            FTPFileTransferringUiModel(
                                 file = FTPFileUiModel(
                                     name = update.fileName,
                                     path = update.remotePath,
                                     parentPath = update.remotePath.substringBeforeLast("/", ""),
                                     isDirectory = false,
-                                    size = 0L,  // We don't have size info in ProgressUpdate
+                                    size = 0L,
                                     modifiedTime = 0L,
                                     permissions = "",
                                     owner = "",
@@ -137,7 +137,8 @@ class BrowseViewModel(
                                     TransferDirection.DOWNLOAD -> BrowseTransferType.DOWNLOAD
 
                                     TransferDirection.UPLOAD -> BrowseTransferType.UPLOAD
-                                }
+                                },
+                                speed = update.speed
                             )
                         }
 
@@ -306,14 +307,8 @@ class BrowseViewModel(
 
                 try {
                     val taskId = transferManager.enqueueDownload(
-                        fileName = file.name,
-                        remotePath = file.path,
-                        downloadDir = downloadDir,
-                        serverHost = ftpServer.host,
-                        serverPort = ftpServer.port,
-                        serverUsername = ftpServer.user,
-                        serverPassword = ftpServer.password,
-                        fileSize = file.size
+                        file = file,
+                        serverId = ftpServer.id
                     )
 
                     // Save task ID mapping
@@ -342,7 +337,7 @@ class BrowseViewModel(
     }
 
     private fun uploadFiles(
-        files: List<Pair<String, String>>,
+        files: List<FilePickerResult>,
         hasDetectedSameName: Boolean = false
     ) {
         println("Uploading files: $files")
@@ -354,7 +349,7 @@ class BrowseViewModel(
         val currentFileList = uiState.value.fileList.map { it.file.name }
         // if has same file name, toast a dialog
         if (!hasDetectedSameName) {
-            if (files.map { it.second }.any { it in currentFileList }) {
+            if (files.map { it.name }.any { it in currentFileList }) {
                 setState { copy(dialogState = BrowseDialogState.FileNameDuplicate(files)) }
                 return
             }
@@ -367,35 +362,29 @@ class BrowseViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val taskMap = mutableMapOf<String, String>()
 
-            files.forEach { (localUri, fileName) ->
+            files.forEach { file ->
                 try {
                     // Build remote file path
                     val remotePath = if (remoteDir.endsWith("/")) {
-                        "$remoteDir$fileName"
+                        "$remoteDir${file.name}"
                     } else {
-                        "$remoteDir/$fileName"
+                        "$remoteDir/${file.name}"
                     }
 
-                    // TODO: Get file size - for now use 0 as placeholder
-                    // You may need to add a helper function to get file size from localUri
-                    val fileSize = 0L
-
                     val taskId = transferManager.enqueueUpload(
-                        fileName = fileName,
-                        localUri = localUri,
+                        fileName = file.name,
+                        localUri = file.uri,
                         remotePath = remotePath,
-                        serverHost = ftpServer.host,
-                        serverPort = ftpServer.port,
-                        serverUsername = ftpServer.user,
-                        serverPassword = ftpServer.password,
-                        fileSize = fileSize
+                        fileSize = file.size,
+                        serverId = ftpServer.id,
+                        lastModifiedTime = file.lastModified
                     )
 
                     // Save task ID mapping using remote path
                     taskMap[remotePath] = taskId
-                    println("Upload enqueued: $fileName, taskId: $taskId")
+                    println("Upload enqueued: ${file.name}, taskId: $taskId")
                 } catch (e: Exception) {
-                    println("Failed to enqueue upload: $fileName, error: ${e.message}")
+                    println("Failed to enqueue upload: ${file.name}, error: ${e.message}")
                     e.printStackTrace()
                 }
             }
@@ -409,7 +398,7 @@ class BrowseViewModel(
             println("${files.size} uploads enqueued in background")
 
             // Refresh file list after a delay to show newly uploaded files
-            kotlinx.coroutines.delay(2000)
+            delay(2000)
             refresh()
         }
     }

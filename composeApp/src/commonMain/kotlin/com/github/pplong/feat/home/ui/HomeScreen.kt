@@ -52,6 +52,7 @@ fun HomeScreen(navController: NavHostController) {
                 is HomeUiEffect.NavigateToBrowser -> {
                     navController.navigate(
                         BrowseScreenNav(
+                            effect.server.id,
                             effect.server.nickname,
                             effect.server.host,
                             effect.server.user,

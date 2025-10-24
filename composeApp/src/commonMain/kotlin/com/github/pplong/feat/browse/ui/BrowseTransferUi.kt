@@ -14,13 +14,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,12 +31,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.pplong.core.utils.FileUtil
 import com.github.pplong.feat.browse.BrowseUiIntent
 import com.github.pplong.feat.browse.FTPFileTransferringUiModel
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import uniftp.composeapp.generated.resources.Res
+import uniftp.composeapp.generated.resources.completed
+import uniftp.composeapp.generated.resources.downloading
 import uniftp.composeapp.generated.resources.ic_folder
+import uniftp.composeapp.generated.resources.uploading
 
 @Composable
 fun BrowseTransferFloatingStatusButton(modifier: Modifier, onClick: () -> Unit) {
@@ -50,10 +56,16 @@ fun BrowseTransferFloatingStatusButton(modifier: Modifier, onClick: () -> Unit) 
 @Composable
 fun BrowseTransferBottomSheet(
     onDismiss: () -> Unit,
-    transferringList: List<FTPFileTransferringUiModel>
+    transferringList: List<FTPFileTransferringUiModel>,
+    transferredList: List<FTPFileTransferringUiModel>
+
 ) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
     var selectedIndex by remember { mutableStateOf(0) }
     ModalBottomSheet(
+        sheetState = sheetState,
         onDismissRequest = onDismiss,
     ) {
         Row(
@@ -80,8 +92,25 @@ fun BrowseTransferBottomSheet(
         }
 
         LazyColumn {
+            item {
+                Text(
+                    stringResource(if (selectedIndex == 0) Res.string.downloading else Res.string.uploading),
+                    modifier = Modifier.padding(bottom = 8.dp, start = 12.dp),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
             items(transferringList) { file ->
                 FTPFileTransferringItem(file, {})
+            }
+            item {
+                Text(
+                    stringResource(Res.string.completed),
+                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+            items(transferredList) { file ->
+                FTPFileTransferredItem(file, {})
             }
         }
     }
@@ -94,38 +123,87 @@ fun FTPFileTransferringItem(
     onIntent: (BrowseUiIntent) -> Unit
 ) {
     val file = fileUiModel.file
-    ListItem(
-        leadingContent = {
-            if (file.isDirectory) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_folder),
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp)
+    Column {
+        ListItem(
+            leadingContent = {
+                if (file.isDirectory) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_folder),
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else {
+                    FileIcon(file.name)
+                }
+            },
+            headlineContent = {
+                Text(
+                    file.name,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
-            } else {
-                FileIcon(file.name)
+            },
+            supportingContent = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        FileUtil.getFileSize(fileUiModel.speed).plus("/s"),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    LinearProgressIndicator(progress = { fileUiModel.progress })
+                }
+            },
+            trailingContent = {
+
+            },
+            modifier = Modifier.clickable {
+
             }
-        },
-        headlineContent = {
-            Text(
-                file.name,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        supportingContent = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                LinearWavyProgressIndicator(progress = { fileUiModel.progress })
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 64.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun FTPFileTransferredItem(
+    fileUiModel: FTPFileTransferringUiModel,
+    onIntent: (BrowseUiIntent) -> Unit
+) {
+    val file = fileUiModel.file
+    Column {
+        ListItem(
+            leadingContent = {
+                if (file.isDirectory) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_folder),
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else {
+                    FileIcon(file.name)
+                }
+            },
+            headlineContent = {
+                Text(
+                    file.name,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            supportingContent = {
+
+            },
+            trailingContent = {
+
+            },
+            modifier = Modifier.clickable {
+
             }
-        },
-        trailingContent = {
-
-        },
-        modifier = Modifier.clickable {
-
-        }
-    )
-
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 64.dp))
+    }
 }

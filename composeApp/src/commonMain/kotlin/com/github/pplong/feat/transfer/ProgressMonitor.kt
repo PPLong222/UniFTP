@@ -11,7 +11,8 @@ data class ProgressUpdate(
     val fileName: String,
     val progress: Float,  // 0.0 - 1.0
     val state: ProgressState,
-    val direction: TransferDirection
+    val direction: TransferDirection,
+    val speed: Long // Byte/s
 )
 
 /**

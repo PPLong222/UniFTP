@@ -1,6 +1,7 @@
 package com.github.pplong.core.utils
 
 import android.net.Uri
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,11 +41,18 @@ actual fun rememberFilePicker(
                         } else {
                             0L
                         }
-
+                        val dateModifiedIndex =
+                            cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED)
+                        val lastModified = if (dateModifiedIndex >= 0) {
+                            cursor.getLong(dateModifiedIndex)
+                        } else {
+                            0L
+                        }
                         FilePickerResult(
                             uri = uri.toString(),
                             name = name,
-                            size = size
+                            size = size,
+                            lastModified = lastModified
                         )
                     } else {
                         null

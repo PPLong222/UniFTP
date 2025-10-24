@@ -8,7 +8,8 @@ import androidx.compose.runtime.Composable
 data class FilePickerResult(
     val uri: String,        // File URI or path
     val name: String,       // File name
-    val size: Long          // File size in bytes
+    val size: Long,          // File size in bytes
+    val lastModified: Long   // Last modified time
 )
 
 /**

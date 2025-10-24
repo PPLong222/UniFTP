@@ -42,7 +42,7 @@ fun App() {
                 val args = entry.toRoute<BrowseScreenNav>()
                 BrowseScreen(
                     FTPServerItem(
-                        id = 0,
+                        id = args.id,
                         host = args.host,
                         password = args.password,
                         user = args.user,

@@ -1,5 +1,6 @@
 package com.github.pplong.feat.transfer
 
+import AppDatabase
 import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.feat.transfer.model.TransferTask
@@ -10,7 +11,6 @@ import com.github.pplong.sftp.PlatformUploadCallbackFactory
 import com.github.pplong.sftp.SFTPClientFactory
 import com.github.pplong.sftp.UploadCallback
 import com.github.pplong.sftp.def.FTPConfig
-import AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.Flow
@@ -123,7 +123,7 @@ class IosTransferManager : KoinComponent {
      * Resume a paused transfer
      */
     suspend fun resumeTransfer(taskId: String) {
-        val task = transferTaskDao.getById(taskId) ?: return
+        val task = transferTaskDao.getTasksEmbeddedById(taskId) ?: return
 
         if (!task.canResume) {
             println("[iOS Transfer] Task cannot be resumed: ${task.status}")
