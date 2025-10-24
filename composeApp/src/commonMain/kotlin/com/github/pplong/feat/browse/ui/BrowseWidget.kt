@@ -79,8 +79,8 @@ import uniftp.composeapp.generated.resources.ic_close
 import uniftp.composeapp.generated.resources.ic_create_new_folder
 import uniftp.composeapp.generated.resources.ic_delete
 import uniftp.composeapp.generated.resources.ic_draft
+import uniftp.composeapp.generated.resources.ic_home
 import uniftp.composeapp.generated.resources.ic_image_upload
-import uniftp.composeapp.generated.resources.ic_path
 import uniftp.composeapp.generated.resources.ic_refresh
 import uniftp.composeapp.generated.resources.ic_search
 import uniftp.composeapp.generated.resources.search
@@ -108,7 +108,7 @@ fun DraggablePathIndicator(
     ) {
         item {
             Icon(
-                painter = painterResource(Res.drawable.ic_path),
+                painter = painterResource(Res.drawable.ic_home),
                 contentDescription = null,
                 modifier = Modifier
                     .size(20.dp)
