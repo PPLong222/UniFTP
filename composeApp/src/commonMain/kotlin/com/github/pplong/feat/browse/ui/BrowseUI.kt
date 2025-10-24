@@ -23,12 +23,15 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.LoadingIndicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -184,7 +187,7 @@ fun BrowseMainContent(
         CommonRequestStatus.INITIAL, CommonRequestStatus.REQUESTING -> {
 
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-                ContainedLoadingIndicator(modifier = Modifier.padding(top = 100.dp).size(108.dp))
+                LoadingIndicator(modifier = Modifier.padding(top = 160.dp).size(108.dp))
             }
         }
 
@@ -198,15 +201,23 @@ fun BrowseMainContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
     val overscrollBehavior = rememberOverscrollEffect()
-
+    val state = rememberPullToRefreshState()
     Box {
         PullToRefreshBox(
             isRefreshing = uiState.requestStatus == CommonRequestStatus.REQUESTING,
-            onRefresh = { onIntent(BrowseUiIntent.Refresh) }
+            onRefresh = { onIntent(BrowseUiIntent.Refresh) },
+            state = state,
+            indicator = {
+                LoadingIndicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    state = state,
+                    isRefreshing = uiState.requestStatus == CommonRequestStatus.REQUESTING,
+                )
+            },
         ) {
             if (uiState.fileList.isNotEmpty()) {
                 LazyColumn(
