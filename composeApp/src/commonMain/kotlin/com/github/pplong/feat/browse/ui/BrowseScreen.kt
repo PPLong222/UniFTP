@@ -118,7 +118,7 @@ fun BrowseScreen(
                     contentAlignment = Alignment.TopCenter,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 16.dp)
+                        .padding(vertical = 4.dp)
                 ) {
                     BrowseMainContent(state, viewModel::sendIntent)
                 }

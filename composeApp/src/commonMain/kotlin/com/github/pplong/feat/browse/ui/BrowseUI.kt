@@ -287,7 +287,6 @@ fun BrowseTopAppBar(
         },
         scrollBehavior = scrollBehavior,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     )
 }
