@@ -22,8 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.github.pplong.core.utils.rememberFilePicker
-import com.github.pplong.core.utils.rememberMediaPicker
+import com.github.pplong.core.api.rememberFilePicker
+import com.github.pplong.core.api.rememberMediaPicker
 import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent

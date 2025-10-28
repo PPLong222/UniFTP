@@ -1,8 +1,8 @@
 import androidx.lifecycle.viewModelScope
+import com.github.pplong.core.api.FilePickerResult
 import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.def.CommonRequestStatus
-import com.github.pplong.core.utils.FilePickerResult
 import com.github.pplong.core.utils.appendFilePath
 import com.github.pplong.feat.browse.BrowseCreateFolderStatus
 import com.github.pplong.feat.browse.BrowseDialogState

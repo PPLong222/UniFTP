@@ -1,10 +1,10 @@
 package com.github.pplong.feat.browse
 
+import com.github.pplong.core.api.FilePickerResult
 import com.github.pplong.core.arch.mvi.UiEffect
 import com.github.pplong.core.arch.mvi.UiIntent
 import com.github.pplong.core.arch.mvi.UiState
 import com.github.pplong.core.def.CommonRequestStatus
-import com.github.pplong.core.utils.FilePickerResult
 import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.home.ui.FTPServerItem
 

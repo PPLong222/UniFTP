@@ -1,11 +1,13 @@
-package com.github.pplong.core.utils
+package com.github.pplong.core.api
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.interop.LocalUIViewController
 import kotlinx.cinterop.*
 import platform.Foundation.*
 import platform.PhotosUI.*
 import platform.UIKit.*
+import platform.UniformTypeIdentifiers.UTType
 import platform.darwin.NSObject
 import platform.darwin.dispatch_semaphore_create
 import platform.darwin.dispatch_semaphore_signal
@@ -72,6 +74,104 @@ actual fun rememberMediaPicker(
 }
 
 /**
+ * iOS implementation of file picker using UIDocumentPickerViewController
+ */
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun rememberFilePicker(
+    onFilesSelected: (List<FilePickerResult>?) -> Unit
+): () -> Unit {
+    return remember {
+        {
+            // Get the current UIViewController
+            val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
+
+            if (rootViewController == null) {
+                println("[iOS FilePicker] Failed to get root view controller")
+                onFilesSelected(null)
+                return@remember
+            }
+
+            // Find the topmost presented view controller
+            var topController: UIViewController = rootViewController
+            while (topController.presentedViewController != null) {
+                topController = topController.presentedViewController ?: break
+            }
+
+            // Create delegate to handle file selection
+            val delegate = FilePickerDelegateImpl { urls ->
+                val results = urls.mapNotNull { url ->
+                    getFileInfo(url)
+                }
+                onFilesSelected(if (results.isEmpty()) null else results)
+            }
+
+            // Create document picker for all file types
+            val picker = UIDocumentPickerViewController(
+                documentTypes = listOf("public.item"),
+                inMode = UIDocumentPickerMode.UIDocumentPickerModeImport
+            )
+
+            picker.delegate = delegate
+            picker.allowsMultipleSelection = true
+
+            // Present the picker
+            topController.presentViewController(
+                picker,
+                animated = true,
+                completion = null
+            )
+        }
+    }
+}
+
+/**
+ * iOS implementation of directory picker using UIDocumentPickerViewController
+ */
+@OptIn(ExperimentalForeignApi::class)
+@Composable
+actual fun rememberDirectoryPicker(
+    onDirectorySelected: (String?) -> Unit
+): () -> Unit {
+    val viewController = LocalUIViewController.current
+
+    val delegate = remember {
+        object : NSObject(), UIDocumentPickerDelegateProtocol {
+            override fun documentPicker(
+                controller: UIDocumentPickerViewController,
+                didPickDocumentAtURL: NSURL
+            ) {
+                onDirectorySelected(didPickDocumentAtURL.path)
+            }
+
+            override fun documentPicker(
+                controller: UIDocumentPickerViewController,
+                didPickDocumentsAtURLs: List<*>
+            ) {
+                val url = didPickDocumentsAtURLs.firstOrNull() as? NSURL
+                onDirectorySelected(url?.path)
+            }
+
+            override fun documentPickerWasCancelled(controller: UIDocumentPickerViewController) {
+                onDirectorySelected(null)
+            }
+        }
+    }
+
+    return {
+        val picker = UIDocumentPickerViewController(
+            documentTypes = listOf("public.folder"),
+            inMode = UIDocumentPickerMode.UIDocumentPickerModeOpen
+        )
+        picker.delegate = delegate
+        picker.allowsMultipleSelection = false
+        viewController.presentViewController(picker, animated = true, completion = null)
+    }
+}
+
+// MARK: - Helper Classes and Functions
+
+/**
  * Delegate implementation for PHPickerViewController
  */
 @OptIn(ExperimentalForeignApi::class)
@@ -89,6 +189,28 @@ private class MediaPickerDelegateImpl(
         @Suppress("UNCHECKED_CAST")
         val results = didFinishPicking as? List<PHPickerResult> ?: emptyList()
         onComplete(results)
+    }
+}
+
+/**
+ * Delegate implementation for UIDocumentPickerViewController
+ */
+@OptIn(ExperimentalForeignApi::class)
+private class FilePickerDelegateImpl(
+    private val onComplete: (List<NSURL>) -> Unit
+) : NSObject(), UIDocumentPickerDelegateProtocol {
+
+    override fun documentPicker(
+        controller: UIDocumentPickerViewController,
+        didPickDocumentsAtURLs: List<*>
+    ) {
+        @Suppress("UNCHECKED_CAST")
+        val urls = didPickDocumentsAtURLs as? List<NSURL> ?: emptyList()
+        onComplete(urls)
+    }
+
+    override fun documentPickerWasCancelled(controller: UIDocumentPickerViewController) {
+        onComplete(emptyList())
     }
 }
 
@@ -231,10 +353,55 @@ private fun getMediaInfo(result: PHPickerResult): FilePickerResult? {
         FilePickerResult(
             uri = tempFilePath,
             name = suggestedName,
-            size = fileSize
+            size = fileSize,
+            lastModified = 0L
         )
     } catch (e: Exception) {
         println("[iOS MediaPicker ERROR] Exception in getMediaInfo: ${e.message}")
+        e.printStackTrace()
+        null
+    }
+}
+
+/**
+ * Helper function to get file information from NSURL
+ */
+@OptIn(ExperimentalForeignApi::class)
+private fun getFileInfo(url: NSURL): FilePickerResult? {
+    return try {
+        // Start accessing security-scoped resource
+        val canAccess = url.startAccessingSecurityScopedResource()
+
+        return try {
+            val fileManager = NSFileManager.defaultManager
+            val path = url.path ?: return null
+
+            // Get file attributes
+            val attributes = fileManager.attributesOfItemAtPath(path, error = null)
+                ?: return null
+
+            // Get file name
+            val fileName = url.lastPathComponent ?: "unknown"
+
+            // Get file size
+            val fileSize = (attributes[NSFileSize] as? NSNumber)?.longValue ?: 0L
+
+            // Get last modified time
+            val lastModified = (attributes[NSFileModificationDate] as? NSDate)?.timeIntervalSince1970?.toLong() ?: 0L
+
+            FilePickerResult(
+                uri = path,
+                name = fileName,
+                size = fileSize,
+                lastModified = lastModified
+            )
+        } finally {
+            // Stop accessing security-scoped resource
+            if (canAccess) {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+    } catch (e: Exception) {
         e.printStackTrace()
         null
     }
