@@ -98,12 +98,12 @@ fun BrowseScreen(
                 )
             }
         },
-//        floatingActionButton = {
-//            BrowseFloatingToolbar(
-//                barStatus = state.toolbarStatus,
-//                onIntent = viewModel::sendIntent
-//            )
-//        }
+        floatingActionButton = {
+            BrowseFloatingToolbar(
+                barStatus = state.toolbarStatus,
+                onIntent = viewModel::sendIntent
+            )
+        }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.padding(paddingValues)) {

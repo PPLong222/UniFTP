@@ -66,6 +66,7 @@ enum class BrowseTransferType(
     UPLOAD(Res.string.upload)
 }
 
+// Deprecated
 val fileSelectionFabsMenuList = listOf(
     BrowseToolbarBarAction.DELETE,
     BrowseToolbarBarAction.DOWNLOAD
@@ -78,13 +79,11 @@ val standardFabsMenuList = listOf(
 )
 
 
-// Deprecated
 val fileBrowseToolBarList = listOf(
-    BrowseToolbarBarAction.DELETE
+    BrowseToolbarBarAction.DELETE,
 )
 
 val standardBrowseToolbarList = listOf(
-    BrowseToolbarBarAction.REFRESH,
     BrowseToolbarBarAction.CREATE_FOLDER,
-    BrowseToolbarBarAction.UPLOAD_MEDIA
+    BrowseToolbarBarAction.UPLOAD_MEDIA,
 )

@@ -172,7 +172,6 @@ private fun buildPath(paths: List<String>, index: Int): String {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-@Deprecated("Use BrowseFloatingToolbar instead")
 fun BrowseFloatingToolbar(
     barStatus: BrowseToolbarStatus,
     onIntent: (BrowseUiIntent) -> Unit,
@@ -232,19 +231,10 @@ fun BrowseFloatingToolbar(
                     onIntent(uiIntent.mapToUiIntent())
                 },
                 content = {
-                    if (barStatus == BrowseToolbarStatus.STANDARD) {
-                        Icon(
-                            painter =
-                                painterResource(Res.drawable.ic_arrow_upward),
-                            contentDescription = null
-                        )
-                    } else {
-                        Icon(
-                            painter =
-                                painterResource(Res.drawable.ic_arrow_downward),
-                            contentDescription = null
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(if (barStatus == BrowseToolbarStatus.STANDARD) Res.drawable.ic_arrow_upward else Res.drawable.ic_arrow_downward),
+                        contentDescription = null
+                    )
                 }
             )
         }

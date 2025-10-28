@@ -255,11 +255,12 @@ fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
             },
         )
 
-        BrowseFloatingActionMenu(
-            modifier = Modifier.align(Alignment.BottomEnd),
-            barStatus = uiState.toolbarStatus,
-            onIntent = onIntent,
-        )
+        // Use toolbar instead
+//        BrowseFloatingActionMenu(
+//            modifier = Modifier.align(Alignment.BottomEnd),
+//            barStatus = uiState.toolbarStatus,
+//            onIntent = onIntent,
+//        )
 
         if (transferPanelVisible) {
             BrowseTransferBottomSheet(
