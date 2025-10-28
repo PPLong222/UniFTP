@@ -89,4 +89,16 @@ interface TransferTaskDao {
      */
     @Query("DELETE FROM transfer_tasks")
     suspend fun deleteAll()
+
+    /**
+     * Update bytes transferred for a task
+     */
+    @Query("UPDATE transfer_tasks SET bytesTransferred = :bytesTransferred WHERE id = :taskId")
+    suspend fun updateBytesTransferred(taskId: String, bytesTransferred: Long)
+
+    /**
+     * Observe active tasks (pending or in progress)
+     */
+    @Query("SELECT * FROM transfer_tasks WHERE status IN ('PENDING', 'IN_PROGRESS')")
+    fun observeActiveTasks(): Flow<List<TransferTaskEmbedded>>
 }

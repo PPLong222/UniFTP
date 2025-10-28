@@ -219,4 +219,78 @@ class Libssh2CoreSftpClient : Libssh2SftpBaseClient(), ICoreFTPClient {
             e.printStackTrace()
         }
     }
+
+    /**
+     * Search for files matching the query string
+     * @param query Search query (supports wildcards like *.txt, or partial filename match)
+     * @param searchPath Starting directory for search (default is root "/")
+     * @return List of matching FTPFile objects
+     */
+    override suspend fun find(query: String, searchPath: String): List<FTPFile> {
+        val results = mutableListOf<FTPFile>()
+
+        // Recursive search function
+        fun searchDirectory(currentPath: String) {
+            try {
+                val files = kotlinx.coroutines.runBlocking {
+                    list(currentPath)
+                }
+
+                for (ftpFile in files) {
+                    val name = ftpFile.name
+
+                    // Skip "." and ".." entries
+                    if (name == "." || name == "..") continue
+
+                    // Check if file matches query
+                    if (matchesQuery(name, query)) {
+                        results.add(ftpFile)
+                    }
+
+                    // Recursively search subdirectories
+                    if (ftpFile.isDirectory) {
+                        try {
+                            searchDirectory(ftpFile.path)
+                        } catch (e: Exception) {
+                            // Skip directories we can't access (permission denied, etc.)
+                            println("[Libssh2CoreSftpClient] Cannot access directory: ${ftpFile.path}, error: ${e.message}")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                println("[Libssh2CoreSftpClient] Error searching directory: $currentPath, error: ${e.message}")
+            }
+        }
+
+        // Start recursive search from searchPath
+        searchDirectory(searchPath)
+        return results
+    }
+
+    /**
+     * Check if filename matches query
+     * Supports wildcards: * (any characters), ? (single character)
+     * Also supports partial string matching (case-insensitive)
+     */
+    private fun matchesQuery(filename: String, query: String): Boolean {
+        if (query.isEmpty()) return true
+
+        // Convert query to regex pattern
+        val pattern = when {
+            // If query contains wildcards, use pattern matching
+            query.contains('*') || query.contains('?') -> {
+                val regexPattern = query
+                    .replace(".", "\\.")
+                    .replace("*", ".*")
+                    .replace("?", ".")
+                Regex(regexPattern, RegexOption.IGNORE_CASE)
+            }
+            // Otherwise, use simple contains matching (case-insensitive)
+            else -> {
+                return filename.contains(query, ignoreCase = true)
+            }
+        }
+
+        return pattern.matches(filename)
+    }
 }

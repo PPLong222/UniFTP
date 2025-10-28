@@ -1,6 +1,11 @@
 package com.github.pplong.sftp
 
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import platform.Foundation.*
 
 /**
@@ -51,25 +56,57 @@ private class IosFileDownloadCallback(
 
     override suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): Pair<Any, Long>? {
         return try {
+            // Validate download directory
+            if (downloadDir.isEmpty()) {
+                val error = IllegalArgumentException("Download directory is empty")
+                println("[iOS Download] ${error.message}")
+                onError(error)
+                return null
+            }
+
+            println("[iOS Download] Checking directory: $downloadDir")
             val fileManager = NSFileManager.defaultManager
 
+            // Check if directory is writable
+            val isWritable = fileManager.isWritableFileAtPath(downloadDir)
+            if (!isWritable) {
+                val error = IllegalStateException("Download directory is not writable: $downloadDir. This may be a File Provider Storage or system directory without write permissions.")
+                println("[iOS Download] ${error.message}")
+                onError(error)
+                return null
+            }
+
+            println("[iOS Download] Directory is writable: $downloadDir")
+
             // Ensure download directory exists
-            var isDirectory = false
-            val dirExists = fileManager.fileExistsAtPath(downloadDir, isDirectory = null)
+            val dirExists = fileManager.fileExistsAtPath(downloadDir)
 
             if (!dirExists) {
-                val created = fileManager.createDirectoryAtPath(
-                    path = downloadDir,
-                    withIntermediateDirectories = true,
-                    attributes = null,
-                    error = null
-                )
-                if (!created) {
-                    val error = IllegalStateException("Failed to create download directory: $downloadDir")
-                    println(error.message)
-                    onError(error)
-                    return null
+                println("[iOS Download] Directory does not exist, creating: $downloadDir")
+                // Create directory with error handling
+                memScoped {
+                    val errorPtr = alloc<ObjCObjectVar<NSError?>>()
+                    val created = fileManager.createDirectoryAtPath(
+                        path = downloadDir,
+                        withIntermediateDirectories = true,
+                        attributes = null,
+                        error = errorPtr.ptr
+                    )
+
+                    if (!created) {
+                        val error = errorPtr.value
+                        val errorMessage = error?.localizedDescription ?: "Unknown error"
+                        val errorCode = error?.code ?: -1
+                        val exception = IllegalStateException("Failed to create download directory: $downloadDir - Error code: $errorCode, Message: $errorMessage")
+                        println("[iOS Download] ${exception.message}")
+                        onError(exception)
+                        return null
+                    } else {
+                        println("[iOS Download] Successfully created directory: $downloadDir")
+                    }
                 }
+            } else {
+                println("[iOS Download] Directory already exists: $downloadDir")
             }
 
             // Generate unique file name if file already exists

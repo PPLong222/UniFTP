@@ -1,6 +1,7 @@
 package com.github.pplong.feat.transfer
 
-import com.github.pplong.feat.transfer.model.TransferTask
+import com.github.pplong.feat.browse.FTPFileUiModel
+import com.github.pplong.feat.transfer.model.TransferTaskEmbedded
 import kotlinx.coroutines.flow.Flow
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -12,18 +13,12 @@ private class IosTransferManagerImpl : TransferManager, KoinComponent {
     private val iosManager: IosTransferManager by inject()
 
     override suspend fun enqueueDownload(
-        fileName: String,
-        remotePath: String,
-        downloadDir: String,
-        serverHost: String,
-        serverPort: Int,
-        serverUsername: String,
-        serverPassword: String,
-        fileSize: Long
+        file: FTPFileUiModel,
+        serverId: Long
     ): String {
-        return iosManager.startDownload(
-            fileName, remotePath, downloadDir,
-            serverHost, serverPort, serverUsername, serverPassword, fileSize
+        return iosManager.enqueueDownload(
+            file = file,
+            serverId = serverId
         )
     }
 
@@ -31,24 +26,30 @@ private class IosTransferManagerImpl : TransferManager, KoinComponent {
         fileName: String,
         localUri: String,
         remotePath: String,
-        serverHost: String,
-        serverPort: Int,
-        serverUsername: String,
-        serverPassword: String,
-        fileSize: Long
+        fileSize: Long,
+        serverId: Long,
+        lastModifiedTime: Long
     ): String {
-        return iosManager.startUpload(
-            fileName, localUri, remotePath,
-            serverHost, serverPort, serverUsername, serverPassword, fileSize
+        return iosManager.enqueueUpload(
+            fileName = fileName,
+            localUri = localUri,
+            remotePath = remotePath,
+            fileSize = fileSize,
+            serverId = serverId,
+            lastModified = lastModifiedTime
         )
+    }
+
+    override suspend fun pausedTransfer(taskId: String) {
+        iosManager.pausedTransfer(taskId)
     }
 
     override suspend fun cancelTransfer(taskId: String) {
         iosManager.cancelTransfer(taskId)
     }
 
-    override fun observeTransfers(): Flow<List<TransferTask>> {
-        return iosManager.observeTransfers()
+    override fun observeTransfers(serverId: Long): Flow<List<TransferTaskEmbedded>> {
+        return iosManager.observeTransfers(serverId)
     }
 
     override suspend fun clearCompleted() {

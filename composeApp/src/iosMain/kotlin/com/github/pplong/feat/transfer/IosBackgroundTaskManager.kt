@@ -59,8 +59,7 @@ class IosBackgroundTaskManager : KoinComponent {
             // Update task status to PAUSED
             transferTaskDao.updateStatus(
                 taskId = taskId,
-                status = TransferStatus.PAUSED,
-                updatedAt = (NSDate().timeIntervalSince1970 * 1000).toLong()
+                status = TransferStatus.PAUSED
             )
         }
 

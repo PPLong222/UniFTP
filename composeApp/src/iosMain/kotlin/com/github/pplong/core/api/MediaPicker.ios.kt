@@ -14,6 +14,10 @@ import platform.darwin.dispatch_semaphore_signal
 import platform.darwin.dispatch_semaphore_wait
 import platform.darwin.DISPATCH_TIME_FOREVER
 
+// Global storage to keep delegates alive (prevent garbage collection)
+// iOS UI operations are on main thread, so no additional synchronization needed
+private val activeDelegates = mutableListOf<Any>()
+
 /**
  * iOS implementation of media picker using PHPickerViewController
  */
@@ -22,7 +26,17 @@ import platform.darwin.DISPATCH_TIME_FOREVER
 actual fun rememberMediaPicker(
     onMediaSelected: (List<FilePickerResult>?) -> Unit
 ): () -> Unit {
-    return remember {
+    // Create and remember the delegate to keep it alive
+    val delegate = remember {
+        MediaPickerDelegateImpl { results ->
+            val mediaResults = results.mapNotNull { result ->
+                getMediaInfo(result)
+            }
+            onMediaSelected(if (mediaResults.isEmpty()) null else mediaResults)
+        }
+    }
+
+    return remember(delegate) {
         {
             // Get the current UIViewController
             val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
@@ -51,13 +65,8 @@ actual fun rememberMediaPicker(
                 setFilter(filter)
             }
 
-            // Create delegate to handle media selection
-            val delegate = MediaPickerDelegateImpl { results ->
-                val mediaResults = results.mapNotNull { result ->
-                    getMediaInfo(result)
-                }
-                onMediaSelected(if (mediaResults.isEmpty()) null else mediaResults)
-            }
+            // Keep delegate alive by adding to active set
+            activeDelegates.add(delegate)
 
             // Create PHPickerViewController
             val picker = PHPickerViewController(configuration)
@@ -81,7 +90,17 @@ actual fun rememberMediaPicker(
 actual fun rememberFilePicker(
     onFilesSelected: (List<FilePickerResult>?) -> Unit
 ): () -> Unit {
-    return remember {
+    // Create and remember the delegate to keep it alive
+    val delegate = remember {
+        FilePickerDelegateImpl { urls ->
+            val results = urls.mapNotNull { url ->
+                getFileInfo(url)
+            }
+            onFilesSelected(if (results.isEmpty()) null else results)
+        }
+    }
+
+    return remember(delegate) {
         {
             // Get the current UIViewController
             val rootViewController = UIApplication.sharedApplication.keyWindow?.rootViewController
@@ -98,13 +117,8 @@ actual fun rememberFilePicker(
                 topController = topController.presentedViewController ?: break
             }
 
-            // Create delegate to handle file selection
-            val delegate = FilePickerDelegateImpl { urls ->
-                val results = urls.mapNotNull { url ->
-                    getFileInfo(url)
-                }
-                onFilesSelected(if (results.isEmpty()) null else results)
-            }
+            // Keep delegate alive by adding to active set
+            activeDelegates.add(delegate)
 
             // Create document picker for all file types
             val picker = UIDocumentPickerViewController(
@@ -183,11 +197,19 @@ private class MediaPickerDelegateImpl(
         picker: PHPickerViewController,
         didFinishPicking: List<*>
     ) {
+        println("[iOS MediaPicker] Delegate callback received with ${didFinishPicking.size} items")
+
         // Dismiss the picker
-        picker.dismissViewControllerAnimated(true, null)
+        picker.dismissViewControllerAnimated(true) {
+            println("[iOS MediaPicker] Picker dismissed")
+        }
 
         @Suppress("UNCHECKED_CAST")
         val results = didFinishPicking as? List<PHPickerResult> ?: emptyList()
+
+        // Remove self from active delegates after completion
+        activeDelegates.remove(this)
+
         onComplete(results)
     }
 }
@@ -204,12 +226,23 @@ private class FilePickerDelegateImpl(
         controller: UIDocumentPickerViewController,
         didPickDocumentsAtURLs: List<*>
     ) {
+        println("[iOS FilePicker] Delegate callback received with ${didPickDocumentsAtURLs.size} items")
+
         @Suppress("UNCHECKED_CAST")
         val urls = didPickDocumentsAtURLs as? List<NSURL> ?: emptyList()
+
+        // Remove self from active delegates after completion
+        activeDelegates.remove(this)
+
         onComplete(urls)
     }
 
     override fun documentPickerWasCancelled(controller: UIDocumentPickerViewController) {
+        println("[iOS FilePicker] Picker was cancelled")
+
+        // Remove self from active delegates after cancellation
+        activeDelegates.remove(this)
+
         onComplete(emptyList())
     }
 }
