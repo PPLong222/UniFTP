@@ -7,6 +7,7 @@ import com.github.pplong.feat.transfer.model.TransferTaskDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -46,6 +47,7 @@ actual class ProgressMonitor(
                     // Create a Flow for each task's progress
                     val progressFlows = taskWorkMap.map { (taskId, workId) ->
                         workManager.getWorkInfoByIdFlow(workId)
+                            .filter { it?.state != WorkInfo.State.SUCCEEDED }
                             .map { workInfo ->
                                 println("[ProgressMonitor] WorkInfo for $taskId: state=${workInfo?.state}, progress=${workInfo?.progress?.getInt(TransferWorker.PROGRESS_KEY, -1)}")
                                 workInfo?.let { convertToProgressUpdate(taskId, it) }
@@ -54,7 +56,7 @@ actual class ProgressMonitor(
 
                     // Combine all flows
                     combine(progressFlows) { updates ->
-                        val filtered = updates.filterNotNull()
+                        val filtered = updates.filterNotNull().filter { it.progress < 1F }
                         println("[ProgressMonitor] Emitting ${filtered.size} progress updates")
                         filtered
                     }
@@ -83,7 +85,7 @@ actual class ProgressMonitor(
         }
 
         val progress = if (workInfo.state == WorkInfo.State.RUNNING) {
-            workInfo.progress.getInt(TransferWorker.PROGRESS_KEY, 0) / 100f
+            workInfo.progress.getFloat(TransferWorker.PROGRESS_KEY, 0F)
         } else {
             0f
         }
@@ -100,7 +102,10 @@ actual class ProgressMonitor(
             progress = progress,
             state = state,
             direction = task.direction,
-            speed = speed
+            speed = speed,
+            lastModified = task.fileLastModified,
+            size = task.size,
+            taskId = task.id
         )
     }
 }

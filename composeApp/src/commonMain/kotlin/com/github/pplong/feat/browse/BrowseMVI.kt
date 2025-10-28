@@ -52,6 +52,8 @@ sealed class BrowseUiIntent : UiIntent {
     data class OnCreateFolderNameChanged(val folderName: String) : BrowseUiIntent()
     data object OnCreateFolderConfirmClicked : BrowseUiIntent()
     data object ShowUploadMediaPicker : BrowseUiIntent()
+
+    data class OnLoadingTaskClicked(val taskId: String) : BrowseUiIntent()
 }
 
 sealed class BrowseUiEffect : UiEffect {

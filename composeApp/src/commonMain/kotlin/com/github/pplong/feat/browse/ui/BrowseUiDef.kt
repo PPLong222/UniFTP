@@ -30,8 +30,9 @@ sealed class BrowseFileLoadingStatus {
     data object Checked : BrowseFileLoadingStatus()
     data object Waiting : BrowseFileLoadingStatus()
     data class Failed(val message: String? = null) : BrowseFileLoadingStatus()
-    data class Loading(val percent: Float) : BrowseFileLoadingStatus()
+    data class Loading(val percent: Float, val speed: Long = 0) : BrowseFileLoadingStatus()
     data object Success : BrowseFileLoadingStatus()
+    data class Paused(val percent: Float) : BrowseFileLoadingStatus()
 }
 
 enum class BrowseToolbarBarAction(

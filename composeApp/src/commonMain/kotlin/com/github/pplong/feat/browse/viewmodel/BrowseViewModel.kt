@@ -19,7 +19,6 @@ import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.browse.ui.BrowseTransferType
 import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.feat.transfer.ProgressMonitor
-import com.github.pplong.feat.transfer.ProgressState
 import com.github.pplong.feat.transfer.TransferManagerFactory
 import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.feat.transfer.model.TransferStatus
@@ -29,6 +28,8 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -40,6 +41,82 @@ class BrowseViewModel(
     private val manager = FTPGlobalSingleton.manager
     private val transferManager = TransferManagerFactory.create()
     private val progressMonitor: ProgressMonitor by inject()
+    private val filePathMap = mutableMapOf<String, FTPFileTransferringUiModel>()
+
+    private val transferringList = combine(
+        transferManager.observeTransfers(ftpServer.id),
+        progressMonitor.observeAllProgress()
+    ) { transfers, progressUpdates ->
+        progressUpdates.map { update ->
+            FTPFileTransferringUiModel(
+                file = FTPFileUiModel(
+                    name = update.fileName,
+                    path = update.remotePath,
+                    parentPath = update.remotePath.substringBeforeLast("/", ""),
+                    isDirectory = false,
+                    size = update.size,
+                    modifiedTime = update.lastModified,
+                    permissions = "",
+                    owner = "",
+                    group = ""
+                ),
+                status = BrowseFileLoadingStatus.Loading(
+                    percent = update.progress,
+                    speed = update.speed
+                ),
+                type = when (update.direction) {
+                    TransferDirection.DOWNLOAD -> BrowseTransferType.DOWNLOAD
+                    TransferDirection.UPLOAD -> BrowseTransferType.UPLOAD
+                },
+                taskId = update.taskId
+            )
+        } + transfers.filter { it.task.status == TransferStatus.PAUSED || it.task.status == TransferStatus.PENDING || it.task.status == TransferStatus.FAILED }
+            .map {
+                FTPFileTransferringUiModel(
+                    file = FTPFileUiModel(
+                        name = it.task.fileName,
+                        path = "",
+                        parentPath = "",
+                        isDirectory = false,
+                        size = it.task.size,
+                        modifiedTime = it.task.fileLastModified,
+                        permissions = "",
+                        owner = "",
+                        group = ""
+                    ),
+                    type = if (it.task.direction == TransferDirection.DOWNLOAD) BrowseTransferType.DOWNLOAD else BrowseTransferType.UPLOAD,
+                    status = when (it.task.status) {
+                        TransferStatus.PENDING -> BrowseFileLoadingStatus.Waiting
+                        TransferStatus.PAUSED -> BrowseFileLoadingStatus.Paused(it.task.bytesTransferred * 1.0f / it.task.size)
+                        else -> BrowseFileLoadingStatus.None
+                    },
+                    taskId = it.task.id
+                )
+            }
+    }
+
+    private val transferredList =
+        transferManager.observeTransfers(ftpServer.id).map { list ->
+            list.filter { it.task.status == TransferStatus.COMPLETED }.map {
+                FTPFileTransferringUiModel(
+                    file = FTPFileUiModel(
+                        name = it.task.fileName,
+                        path = it.task.remotePath,
+                        parentPath = "",
+                        isDirectory = false,
+                        size = it.task.size,
+                        modifiedTime = it.task.fileLastModified,
+                        permissions = "",
+                        owner = "",
+                        group = ""
+                    ),
+                    type = if (it.task.direction == TransferDirection.DOWNLOAD) BrowseTransferType.DOWNLOAD else BrowseTransferType.UPLOAD,
+                    status = BrowseFileLoadingStatus.Success,
+                    taskId = it.task.id
+                )
+            }
+        }
+
 
     init {
         // TODO: know why we have to pass server here rather than initialState which will lead to crash issue
@@ -66,107 +143,36 @@ class BrowseViewModel(
     private fun observeTransfers() {
         // Observe database for task status changes (low frequency - only for completion/failure)
         viewModelScope.launch {
-            transferManager.observeTransfers(ftpServer.id)
-                .collectLatest { transfers ->
-                    println("[BrowseViewModel] Database: ${transfers.size} transfers")
-                    val transferredList =
-                        transfers.filter { it.server.id == ftpServer.id && it.task.status == TransferStatus.COMPLETED }
-                            .map {
-                                FTPFileTransferringUiModel(
-                                    file = FTPFileUiModel(
-                                        name = it.task.fileName,
-                                        path = "",
-                                        parentPath = "",
-                                        isDirectory = false,
-                                        size = it.task.size,
-                                        modifiedTime = it.task.fileLastModified,
-                                        permissions = "",
-                                        owner = "",
-                                        group = ""
-                                    ),
-                                    progress = 1.0f,
-                                    type = if (it.task.direction == TransferDirection.DOWNLOAD) BrowseTransferType.DOWNLOAD else BrowseTransferType.UPLOAD,
-                                    speed = 0
-                                )
+            transferringList.collectLatest { list ->
+
+                filePathMap.clear()
+                filePathMap.putAll(list.associateBy { it.file.path })
+                setState {
+                    copy(
+                        transferringFile = list,
+                        fileList = fileList.map { fileModel ->
+                            val browseFile = filePathMap[fileModel.file.path].takeIf {
+                                fileModel.file.size == it?.file?.size && fileModel.file.modifiedTime == it.file.modifiedTime && it.type == BrowseTransferType.DOWNLOAD
                             }
-                    setState { copy(transferredFile = transferredList) }
+                            if (browseFile != null) {
+                                fileModel.copy(status = browseFile.status)
+                            } else {
+                                fileModel.copy(status = BrowseFileLoadingStatus.None)
+                            }
+                        }
+                    )
                 }
+            }
         }
 
-        // Observe WorkManager for real-time progress (high frequency)
-        observeRealtimeProgress()
-    }
-
-    private fun observeRealtimeProgress() {
-        println("[BrowseViewModel] Starting real-time progress observation")
         viewModelScope.launch {
-            progressMonitor.observeAllProgress()
-                .collectLatest { progressUpdates ->
-                    println("[BrowseViewModel] Received progress updates: ${progressUpdates.size} items")
-
-                    if (progressUpdates.isEmpty()) {
-                        println("[BrowseViewModel] Empty progress updates, skipping")
-                        return@collectLatest
-                    }
-
-                    println("[BrowseViewModel] WorkManager: ${progressUpdates.size} progress updates")
-                    progressUpdates.forEach { update ->
-                        println("[BrowseViewModel]   - ${update.fileName}: ${(update.progress * 100).toInt()}% [${update.state}]")
-                    }
-
-                    val progressMap = progressUpdates.associateBy { it.remotePath }
-
-                    // Build transferringFile list from active progress updates
-                    val transferringFiles = progressUpdates
-                        .filter { it.state == ProgressState.RUNNING || it.state == ProgressState.WAITING }
-                        .map { update ->
-                            FTPFileTransferringUiModel(
-                                file = FTPFileUiModel(
-                                    name = update.fileName,
-                                    path = update.remotePath,
-                                    parentPath = update.remotePath.substringBeforeLast("/", ""),
-                                    isDirectory = false,
-                                    size = 0L,
-                                    modifiedTime = 0L,
-                                    permissions = "",
-                                    owner = "",
-                                    group = ""
-                                ),
-                                progress = update.progress,
-                                type = when (update.direction) {
-                                    TransferDirection.DOWNLOAD -> BrowseTransferType.DOWNLOAD
-
-                                    TransferDirection.UPLOAD -> BrowseTransferType.UPLOAD
-                                },
-                                speed = update.speed
-                            )
-                        }
-
-                    setState {
-                        copy(
-                            transferringFile = transferringFiles,
-                            fileList = fileList.map { fileModel ->
-                                val progress = progressMap[fileModel.file.path]
-
-                                if (progress != null) {
-                                    val newStatus = when (progress.state) {
-                                        ProgressState.WAITING -> BrowseFileLoadingStatus.Waiting
-                                        ProgressState.RUNNING -> BrowseFileLoadingStatus.Loading(
-                                            progress.progress
-                                        )
-
-                                        ProgressState.SUCCEEDED -> BrowseFileLoadingStatus.Success
-                                        ProgressState.FAILED -> BrowseFileLoadingStatus.Failed("Transfer failed")
-                                        ProgressState.CANCELLED -> BrowseFileLoadingStatus.None
-                                    }
-                                    fileModel.copy(status = newStatus)
-                                } else {
-                                    fileModel
-                                }
-                            }
-                        )
-                    }
+            transferredList.collectLatest {
+                setState {
+                    copy(
+                        transferredFile = it,
+                    )
                 }
+            }
         }
     }
 
@@ -193,6 +199,7 @@ class BrowseViewModel(
             BrowseUiIntent.ShowCreateFolder -> showCreateFolderDialog()
             BrowseUiIntent.ShowUploadMediaPicker -> showUploadMediaPicker()
             is BrowseUiIntent.StartSearch -> startSearch(intent.query, intent.local)
+            is BrowseUiIntent.OnLoadingTaskClicked -> onLoadingTaskClicked(intent.taskId)
         }
     }
 
@@ -204,27 +211,10 @@ class BrowseViewModel(
         setState { copy(requestStatus = CommonRequestStatus.REQUESTING) }
         viewModelScope.launch(Dispatchers.IO) {
             val curFileList =
-                manager.list(path).map { FTPFileSelectableUiModel(file = it.toFTPFileUiModel()) }
+                manager.list(path)
 
-            // Preserve loading status for files that are being transferred
-            val oldStatusMap = uiState.value.fileList
-                .filter {
-                    it.status is BrowseFileLoadingStatus.Loading ||
-                            it.status is BrowseFileLoadingStatus.Waiting
-                }
-                .associateBy { it.file.path }
-
-            val updatedFileList = curFileList.map { fileModel ->
-                // Restore loading status if this file was being transferred
-                val oldStatus = oldStatusMap[fileModel.file.path]?.status
-                if (oldStatus is BrowseFileLoadingStatus.Loading ||
-                    oldStatus is BrowseFileLoadingStatus.Waiting
-                ) {
-                    fileModel.copy(status = oldStatus)
-                } else {
-                    fileModel
-                }
-            }
+            val updatedFileList =
+                curFileList.map { FTPFileSelectableUiModel(file = it.toFTPFileUiModel()) }
 
             setState {
                 copy(
@@ -526,5 +516,10 @@ class BrowseViewModel(
 
     }
 
-
+    private fun onLoadingTaskClicked(taskId: String) {
+        viewModelScope.launch {
+            println("Pause ${taskId}")
+            transferManager.pausedTransfer(taskId)
+        }
+    }
 }

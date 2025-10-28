@@ -38,6 +38,11 @@ private class AndroidTransferManagerImpl : TransferManager, KoinComponent {
             lastModified = lastModifiedTime
         )
     }
+
+    override suspend fun pausedTransfer(taskId: String) {
+        return androidManager.pausedTransfer(taskId)
+    }
+
     override suspend fun cancelTransfer(taskId: String) {
         androidManager.cancelTransfer(taskId)
     }

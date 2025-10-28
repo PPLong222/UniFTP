@@ -67,6 +67,12 @@ interface TransferTaskDao {
     suspend fun updateStatus(taskId: String, status: TransferStatus)
 
     /**
+     * Update task status
+     */
+    @Query("UPDATE transfer_tasks SET status = :status, bytesTransferred = :bytesTransferred WHERE id = :taskId")
+    suspend fun pausedStatus(taskId: String, status: TransferStatus, bytesTransferred: Long)
+
+    /**
      * Delete all completed tasks
      */
     @Query("DELETE FROM transfer_tasks WHERE status = 'COMPLETED'")

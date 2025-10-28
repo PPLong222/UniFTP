@@ -7,8 +7,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.await
 import androidx.work.workDataOf
 import com.github.pplong.feat.browse.FTPFileUiModel
+import com.github.pplong.feat.transfer.TransferWorker.Companion.BYTES_TRANSFERRED
 import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.feat.transfer.model.TransferTask
@@ -19,6 +21,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -89,6 +92,7 @@ class AndroidTransferManager(
             size = file.size,
             serverId = serverId,
             fileLastModified = file.modifiedTime,
+            bytesTransferred = 0L
         )
 
         // Save to database
@@ -125,6 +129,7 @@ class AndroidTransferManager(
             size = fileSize,
             serverId = serverId,
             fileLastModified = lastModified,
+            bytesTransferred = 0L
         )
 
         // Save to database
@@ -224,5 +229,20 @@ class AndroidTransferManager(
      */
     suspend fun clearFailed() {
         transferTaskDao.deleteFailed()
+    }
+
+    suspend fun pausedTransfer(taskId: String) {
+
+        val bytesTransferred =
+            workManager.getWorkInfosForUniqueWorkFlow("transfer_$taskId").firstOrNull()
+                ?.firstOrNull()?.progress?.getLong(BYTES_TRANSFERRED, 0L) ?: 0L
+
+        workManager.cancelUniqueWork("transfer_$taskId").await()
+
+        transferTaskDao.pausedStatus(
+            taskId = taskId,
+            status = TransferStatus.PAUSED,
+            bytesTransferred = bytesTransferred,
+        )
     }
 }

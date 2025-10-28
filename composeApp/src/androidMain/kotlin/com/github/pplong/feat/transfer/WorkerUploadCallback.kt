@@ -15,7 +15,8 @@ class WorkerUploadCallback(
     private val callbackFactory: AndroidUploadCallbackFactory,
     private val transferTaskDao: com.github.pplong.feat.transfer.model.TransferTaskDao,
     private val notificationHelper: TransferNotificationHelper,
-    private val onSetProgress: (Int, Long) -> Unit
+    private val onSetProgress: (Long, Long) -> Unit,
+    private val isCancelled: () -> Boolean
 ) : UploadCallback {
     private var lastTimeStamp = 0L
     private var lastBytesTransferred: Long = 0
@@ -35,6 +36,12 @@ class WorkerUploadCallback(
     }
 
     override fun onProgress(bytesTransferred: Long, totalBytes: Long) {
+        // Check if transfer is cancelled
+        if (isCancelled()) {
+            println("[WorkerUploadCallback] Transfer cancelled, throwing exception")
+            throw TransferCancelledException("Upload cancelled by user")
+        }
+
         // Update notification
         val progress = if (totalBytes > 0) {
             (bytesTransferred * 100 / totalBytes).toInt()
@@ -53,10 +60,7 @@ class WorkerUploadCallback(
             lastTimeStamp = currentTimeStamp
         }
         // Update WorkManager progress - UI observes this directly via ProgressMonitor
-        onSetProgress(progress, lastSpeed)
-
-        // Note: No database update needed for progress
-        // Database is only updated when status changes (completed/failed)
+        onSetProgress(bytesTransferred, lastSpeed)
     }
 
     override fun onComplete() {

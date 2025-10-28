@@ -14,7 +14,8 @@ class WorkerDownloadCallback(
     private val callbackFactory: AndroidDownloadCallbackFactory,
     private val transferTaskDao: TransferTaskDao,
     private val notificationHelper: TransferNotificationHelper,
-    private val onSetProgress: (Int, Long) -> Unit
+    private val onSetProgress: (Long, Long) -> Unit,
+    private val isCancelled: () -> Boolean
 ) : DownloadCallback {
     private var lastTimeStamp = 0L
     private var lastBytesTransferred: Long = 0
@@ -36,8 +37,13 @@ class WorkerDownloadCallback(
     }
 
     override fun onProgress(bytesTransferred: Long, totalBytes: Long) {
-        // Update notification
+        // Check if transfer is cancelled
+        if (isCancelled()) {
+            println("[WorkerDownloadCallback] Transfer cancelled, throwing exception")
+            throw TransferCancelledException("Download cancelled by user")
+        }
 
+        // Update notification
         val progress = if (totalBytes > 0) {
             (bytesTransferred * 100 / totalBytes).toInt()
         } else 0
@@ -57,7 +63,7 @@ class WorkerDownloadCallback(
             lastTimeStamp = currentTimeStamp
         }
         // Update WorkManager progress - UI observes this directly via ProgressMonitor
-        onSetProgress(progress, lastSpeed)
+        onSetProgress(bytesTransferred, lastSpeed)
 
 
         // Note: No database update needed for progress

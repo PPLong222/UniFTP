@@ -78,40 +78,46 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                     return@withContext false
                 }
 
-                sftp.open(remotePath).use { remoteFile ->
-                    val inputStream = remoteFile.RemoteFileInputStream(actualResumeOffset)
-                    val buffer = ByteArray(BUFFER_SIZE)
-                    var bytesRead: Int
-                    var totalBytesRead = actualResumeOffset
+                try {
+                    sftp.open(remotePath).use { remoteFile ->
+                        val inputStream = remoteFile.RemoteFileInputStream(actualResumeOffset)
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        var bytesRead: Int
+                        var totalBytesRead = actualResumeOffset
 
-                    // Report initial progress if resuming
-                    if (actualResumeOffset > 0L) {
-                        callback.onProgress(totalBytesRead, fileSize)
-                    }
-
-                    inputStream.use {
-                        // Read and write data
-                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                            outputStream.write(buffer, 0, bytesRead)
-                            totalBytesRead += bytesRead
-
-                            // Report progress
+                        // Report initial progress if resuming
+                        if (actualResumeOffset > 0L) {
                             callback.onProgress(totalBytesRead, fileSize)
                         }
-                        outputStream.flush()
-                        val success = totalBytesRead == fileSize
-                        if (success) {
-                            callback.onComplete()
-                            return@withContext true
-                        } else {
-                            val error = IllegalStateException(
-                                "Download incomplete: $totalBytesRead / $fileSize bytes"
-                            )
-                            println(error.message)
-                            callback.onError(error)
-                            return@withContext false
+
+                        inputStream.use {
+                            // Read and write data
+                            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                                outputStream.write(buffer, 0, bytesRead)
+                                totalBytesRead += bytesRead
+
+                                // Report progress (will throw exception if cancelled)
+                                callback.onProgress(totalBytesRead, fileSize)
+                            }
+                            outputStream.flush()
+                            val success = totalBytesRead == fileSize
+                            if (success) {
+                                callback.onComplete()
+                                return@withContext true
+                            } else {
+                                val error = IllegalStateException(
+                                    "Download incomplete: $totalBytesRead / $fileSize bytes"
+                                )
+                                println(error.message)
+                                callback.onError(error)
+                                return@withContext false
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    // Re-throw the exception to be handled by the caller
+                    // This allows TransferCancelledException to propagate properly
+                    throw e
                 }
             }
         }
@@ -140,39 +146,45 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                 return@withContext false
             }
             inputStream.use {
-                val localSourceFile = object : LocalSourceFile {
-                    override fun getName(): String {
-                        return remotePath.substringAfterLast('/')
+                try {
+                    val localSourceFile = object : LocalSourceFile {
+                        override fun getName(): String {
+                            return remotePath.substringAfterLast('/')
+                        }
+
+                        override fun getLength(): Long {
+                            return fileSize
+                        }
+
+                        override fun getInputStream(): InputStream {
+                            // Wrap the input stream with progress tracking
+                            return ProgressTrackingInputStream(inputStream, fileSize, callback)
+                        }
+
+                        override fun getPermissions(): Int {
+                            // rw-r--r-- in binary: 110 100 100
+                            return 0b110_100_100 // 420 in decimal (octal 0644)
+                        }
+
+                        override fun isFile(): Boolean = true
+
+                        override fun isDirectory(): Boolean = false
+                        override fun getChildren(filter: LocalFileFilter?): Iterable<LocalSourceFile?>? {
+                            return null
+                        }
+
+                        override fun getLastAccessTime(): Long = System.currentTimeMillis() / 1000
+
+                        override fun getLastModifiedTime(): Long = System.currentTimeMillis() / 1000
+
+                        override fun providesAtimeMtime(): Boolean = true
                     }
-
-                    override fun getLength(): Long {
-                        return fileSize
-                    }
-
-                    override fun getInputStream(): InputStream {
-                        // Wrap the input stream with progress tracking
-                        return ProgressTrackingInputStream(inputStream, fileSize, callback)
-                    }
-
-                    override fun getPermissions(): Int {
-                        // rw-r--r-- in binary: 110 100 100
-                        return 0b110_100_100 // 420 in decimal (octal 0644)
-                    }
-
-                    override fun isFile(): Boolean = true
-
-                    override fun isDirectory(): Boolean = false
-                    override fun getChildren(filter: LocalFileFilter?): Iterable<LocalSourceFile?>? {
-                        return null
-                    }
-
-                    override fun getLastAccessTime(): Long = System.currentTimeMillis() / 1000
-
-                    override fun getLastModifiedTime(): Long = System.currentTimeMillis() / 1000
-
-                    override fun providesAtimeMtime(): Boolean = true
+                    sftp.put(localSourceFile, remotePath)
+                } catch (e: Exception) {
+                    // Re-throw the exception to be handled by the caller
+                    // This allows TransferCancelledException to propagate properly
+                    throw e
                 }
-                sftp.put(localSourceFile, remotePath)
             }
             // Upload completed successfully
             callback.onComplete()

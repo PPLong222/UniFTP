@@ -39,6 +39,7 @@ class TransferWorker(
         const val KEY_TASK_ID = "task_id"
         const val PROGRESS_KEY = "progress"
         const val SPEED = "speed"
+        const val BYTES_TRANSFERRED = "bytes_transferred"
         const val PROGRESS_MAX = 100
     }
 
@@ -51,6 +52,12 @@ class TransferWorker(
             ?: return Result.failure()
 
         println("[TransferWorker] Starting transfer for task: $taskId")
+
+        // Check if stopped before starting
+        if (isStopped) {
+            println("[TransferWorker] Worker stopped before starting task: $taskId")
+            return Result.failure(workDataOf("error" to "Transfer cancelled"))
+        }
 
         // Get transfer task from database
         val task = transferTaskDao.getTasksEmbeddedById(taskId)
@@ -67,12 +74,27 @@ class TransferWorker(
 
         // Execute transfer based on direction
         return try {
+            // Check if stopped before transfer
+            if (isStopped) {
+                println("[TransferWorker] Worker stopped, cancelling task: $taskId")
+                transferTaskDao.updateStatus(taskId = taskId, status = TransferStatus.CANCELLED)
+                return Result.failure(workDataOf("error" to "Transfer cancelled"))
+            }
+
             val transferResult = when (task.task.direction) {
                 TransferDirection.DOWNLOAD -> executeDownload(task)
                 TransferDirection.UPLOAD -> executeUpload(task)
             }
             println("[TransferWorker] Transfer completed for task: $taskId")
             transferResult
+        } catch (e: TransferCancelledException) {
+            println("[TransferWorker] Transfer cancelled: ${e.message}")
+            // Update task status to CANCELLED (not FAILED)
+            transferTaskDao.updateStatus(
+                taskId = taskId,
+                status = TransferStatus.CANCELLED,
+            )
+            Result.failure(workDataOf("error" to "Transfer cancelled"))
         } catch (e: Exception) {
             println("[TransferWorker] Transfer failed: ${e.message}")
             e.printStackTrace()
@@ -127,9 +149,17 @@ class TransferWorker(
                     callbackFactory = callbackFactory,
                     transferTaskDao = transferTaskDao,
                     notificationHelper = notificationHelper,
-                    onSetProgress = { progress, speed ->
-                        setProgressAsync(workDataOf(PROGRESS_KEY to progress, SPEED to speed))
-                    }
+                    onSetProgress = { bytesTransferred, speed ->
+                        val progress = bytesTransferred * 1.0f / taskEmbedded.task.size
+                        setProgressAsync(
+                            workDataOf(
+                                PROGRESS_KEY to progress,
+                                SPEED to speed,
+                                BYTES_TRANSFERRED to bytesTransferred
+                            )
+                        )
+                    },
+                    isCancelled = { isStopped }
                 )
 
                 // Start download with resume support
@@ -210,9 +240,17 @@ class TransferWorker(
                     callbackFactory = callbackFactory,
                     transferTaskDao = transferTaskDao,
                     notificationHelper = notificationHelper,
-                    onSetProgress = { progress, speed ->
-                        setProgressAsync(workDataOf(PROGRESS_KEY to progress, SPEED to speed))
-                    }
+                    onSetProgress = { bytesTransferred, speed ->
+                        val progress = bytesTransferred * 1.0f / taskEmbedded.task.size
+                        setProgressAsync(
+                            workDataOf(
+                                PROGRESS_KEY to progress,
+                                SPEED to speed,
+                                BYTES_TRANSFERRED to bytesTransferred
+                            )
+                        )
+                    },
+                    isCancelled = { isStopped }
                 )
 
                 // Start upload
@@ -261,3 +299,8 @@ class TransferWorker(
         }
     }
 }
+
+/**
+ * Exception thrown when a transfer is cancelled
+ */
+class TransferCancelledException(message: String = "Transfer cancelled") : Exception(message)

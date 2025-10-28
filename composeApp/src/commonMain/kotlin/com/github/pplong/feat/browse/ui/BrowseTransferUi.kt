@@ -59,7 +59,8 @@ fun BrowseTransferFloatingStatusButton(modifier: Modifier, onClick: () -> Unit) 
 fun BrowseTransferBottomSheet(
     onDismiss: () -> Unit,
     transferringList: List<FTPFileTransferringUiModel>,
-    transferredList: List<FTPFileTransferringUiModel>
+    transferredList: List<FTPFileTransferringUiModel>,
+    onIntent: (BrowseUiIntent) -> Unit
 
 ) {
     val sheetState = rememberModalBottomSheetState(
@@ -121,7 +122,9 @@ fun BrowseTransferBottomSheet(
                     )
                 }
                 items(transferringTypeList) { file ->
-                    FTPFileTransferringItem(file, {})
+                    FTPFileTransferringItem(file, onItemClicked = {
+                        onIntent(BrowseUiIntent.OnLoadingTaskClicked(it))
+                    })
                 }
                 item {
                     Text(
@@ -142,7 +145,7 @@ fun BrowseTransferBottomSheet(
 @Composable
 fun FTPFileTransferringItem(
     fileUiModel: FTPFileTransferringUiModel,
-    onIntent: (BrowseUiIntent) -> Unit
+    onItemClicked: (String) -> Unit
 ) {
     val file = fileUiModel.file
     Column {
@@ -169,18 +172,31 @@ fun FTPFileTransferringItem(
             },
             supportingContent = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        FileUtil.getFileSize(fileUiModel.speed).plus("/s"),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    LinearProgressIndicator(progress = { fileUiModel.progress })
+                    if (fileUiModel.status is BrowseFileLoadingStatus.Loading) {
+                        Text(
+                            FileUtil.getFileSize(fileUiModel.status.speed).plus("/s"),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        LinearProgressIndicator(progress = { fileUiModel.status.percent })
+                    } else if (fileUiModel.status is BrowseFileLoadingStatus.Waiting) {
+                        Text(
+                            "Pending",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else if (fileUiModel.status is BrowseFileLoadingStatus.Paused) {
+                        Text(
+                            "Paused",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        LinearProgressIndicator(progress = { fileUiModel.status.percent })
+                    }
                 }
             },
             trailingContent = {
 
             },
             modifier = Modifier.clickable {
-
+                onItemClicked(fileUiModel.taskId)
             }
         )
         HorizontalDivider(modifier = Modifier.padding(start = 64.dp))

@@ -29,6 +29,7 @@ interface TransferManager {
         lastModifiedTime: Long
     ): String
 
+    suspend fun pausedTransfer(taskId: String)
     /**
      * Cancel a transfer
      */

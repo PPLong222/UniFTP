@@ -26,8 +26,8 @@ enum class BrowseCreateFolderStatus {
 }
 
 data class FTPFileTransferringUiModel(
+    val taskId: String,
     val file: FTPFileUiModel,
-    val progress: Float,
-    val speed: Long,
-    val type: BrowseTransferType
+    val type: BrowseTransferType,
+    val status: BrowseFileLoadingStatus
 )

@@ -80,6 +80,7 @@ data class TransferTask(
     val serverId: Long,
 
     val fileLastModified: Long,
+    val bytesTransferred: Long
 ) {
     /**
      * Check if transfer is complete

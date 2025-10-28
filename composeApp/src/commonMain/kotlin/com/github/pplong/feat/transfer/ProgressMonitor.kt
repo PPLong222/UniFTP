@@ -12,7 +12,10 @@ data class ProgressUpdate(
     val progress: Float,  // 0.0 - 1.0
     val state: ProgressState,
     val direction: TransferDirection,
-    val speed: Long // Byte/s
+    val speed: Long, // Byte/s
+    val lastModified: Long,
+    val size: Long,
+    val taskId: String
 )
 
 /**

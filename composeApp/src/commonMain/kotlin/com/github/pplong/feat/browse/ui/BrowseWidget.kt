@@ -49,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
@@ -68,6 +67,7 @@ import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.SEARCH
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.SHARE
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.UPLOAD_FILE
 import com.github.pplong.feat.browse.ui.BrowseToolbarBarAction.UPLOAD_MEDIA
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -251,7 +251,7 @@ fun BrowseFloatingActionMenu(
     var expanded by remember { mutableStateOf(false) }
     val actionList =
         if (barStatus == BrowseToolbarStatus.STANDARD) standardFabsMenuList else fileSelectionFabsMenuList
-    val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
     FloatingActionButtonMenu(
         modifier = modifier,
         expanded = expanded,
@@ -275,8 +275,11 @@ fun BrowseFloatingActionMenu(
         for (action in actionList) {
             FloatingActionButtonMenuItem(
                 onClick = {
-                    onIntent(action.mapToUiIntent())
                     expanded = !expanded
+                    scope.launch {
+                        delay(300)
+                        onIntent(action.mapToUiIntent())
+                    }
                 },
                 text = { Text(stringResource(action.titleRes)) },
                 icon = {
