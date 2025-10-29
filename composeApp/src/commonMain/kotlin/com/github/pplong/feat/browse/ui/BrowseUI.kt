@@ -20,6 +20,7 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -33,10 +34,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.LoadingIndicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,7 +59,7 @@ import uniftp.composeapp.generated.resources.ic_data_off
 import uniftp.composeapp.generated.resources.ic_folder
 import uniftp.composeapp.generated.resources.ic_folder_open
 import uniftp.composeapp.generated.resources.ic_multiple
-import uniftp.composeapp.generated.resources.ic_search
+import uniftp.composeapp.generated.resources.ic_swap
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -72,104 +69,111 @@ fun FTPFileInfo(
     appbarStatus: BrowseToolbarStatus
 ) {
     val file = fileUiModel.file
-    ListItem(
-        leadingContent = {
-            if (file.isDirectory) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_folder),
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp)
+    Column {
+        ListItem(
+            leadingContent = {
+                if (file.isDirectory) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_folder),
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else {
+                    FileIcon(file.name)
+                }
+            },
+            headlineContent = {
+                Text(
+                    file.name,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
-            } else {
-                FileIcon(file.name)
-            }
-        },
-        headlineContent = {
-            Text(
-                file.name,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        supportingContent = {
-            Row {
-                if (!file.isDirectory) {
+            },
+            supportingContent = {
+                Row {
+                    if (!file.isDirectory) {
+                        Text(
+                            FileUtil.getFileSize(file.size),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text(
-                        FileUtil.getFileSize(file.size),
+                        DateUtil.getFormatDate(file.modifiedTime),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Spacer(Modifier.width(8.dp))
                 }
-                Text(
-                    DateUtil.getFormatDate(file.modifiedTime),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        },
-        trailingContent = {
-            AnimatedContent(
-                targetState = fileUiModel.status::class,
-                modifier = Modifier.size(32.dp)
-            ) { target ->
-                when (target) {
-                    BrowseFileLoadingStatus.Checked::class, BrowseFileLoadingStatus.UnChecked::class -> {
-                        Checkbox(
-                            checked = fileUiModel.status == BrowseFileLoadingStatus.Checked,
-                            onCheckedChange = { checked ->
-                                onIntent(BrowseUiIntent.SelectFile(file, checked))
-                            }
-                        )
-                    }
+            },
+            trailingContent = {
+                AnimatedContent(
+                    targetState = fileUiModel.status::class,
+                    modifier = Modifier.size(32.dp)
+                ) { target ->
+                    when (target) {
+                        BrowseFileLoadingStatus.Checked::class, BrowseFileLoadingStatus.UnChecked::class -> {
+                            Checkbox(
+                                checked = fileUiModel.status == BrowseFileLoadingStatus.Checked,
+                                onCheckedChange = { checked ->
+                                    onIntent(BrowseUiIntent.SelectFile(file, checked))
+                                }
+                            )
+                        }
 
-                    BrowseFileLoadingStatus.Failed::class -> {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_data_off),
-                            modifier = Modifier.size(32.dp),
-                            contentDescription = null
-                        )
-                    }
+                        BrowseFileLoadingStatus.Failed::class -> {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_data_off),
+                                modifier = Modifier.size(32.dp),
+                                contentDescription = null
+                            )
+                        }
 
-                    BrowseFileLoadingStatus.Loading::class -> {
-                        val percent =
-                            (fileUiModel.status as? BrowseFileLoadingStatus.Loading)?.percent ?: 0f
-                        CircularWavyProgressIndicator(
-                            progress = { percent },
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                        BrowseFileLoadingStatus.Loading::class -> {
+                            val percent =
+                                (fileUiModel.status as? BrowseFileLoadingStatus.Loading)?.percent
+                                    ?: 0f
+                            CircularWavyProgressIndicator(
+                                progress = { percent },
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
 
-                    BrowseFileLoadingStatus.None::class -> {
+                        BrowseFileLoadingStatus.None::class -> {
 
-                    }
+                        }
 
-                    BrowseFileLoadingStatus.Success::class -> {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_check),
-                            modifier = Modifier.size(32.dp),
-                            contentDescription = null
-                        )
-                    }
+                        BrowseFileLoadingStatus.Success::class -> {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_check),
+                                modifier = Modifier.size(32.dp),
+                                contentDescription = null
+                            )
+                        }
 
-                    BrowseFileLoadingStatus.Waiting::class -> {
-                        ContainedLoadingIndicator(modifier = Modifier.size(32.dp))
+                        BrowseFileLoadingStatus.Waiting::class -> {
+                            ContainedLoadingIndicator(modifier = Modifier.size(32.dp))
+                        }
                     }
                 }
+            },
+            modifier = Modifier.clickable {
+                if (fileUiModel.status == BrowseFileLoadingStatus.UnChecked || fileUiModel.status == BrowseFileLoadingStatus.Checked) {
+                    onIntent(
+                        BrowseUiIntent.SelectFile(
+                            file,
+                            fileUiModel.status != BrowseFileLoadingStatus.Checked
+                        )
+                    )
+                } else if (file.isDirectory) {
+                    onIntent(BrowseUiIntent.Jump(file.path))
+                }
             }
-        },
-        modifier = Modifier.clickable {
-            if (fileUiModel.status == BrowseFileLoadingStatus.UnChecked || fileUiModel.status == BrowseFileLoadingStatus.Checked) {
-                onIntent(BrowseUiIntent.SelectFile(file,
-                    fileUiModel.status != BrowseFileLoadingStatus.Checked
-                ))
-            } else if (file.isDirectory) {
-                onIntent(BrowseUiIntent.Jump(file.path))
-            }
-        }
-    )
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 80.dp))
+    }
 }
 
 @Composable
@@ -211,7 +215,6 @@ fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
     val overscrollBehavior = rememberOverscrollEffect()
     val state = rememberPullToRefreshState()
 
-    var transferPanelVisible by remember { mutableStateOf(false) }
 
     Box {
         PullToRefreshBox(
@@ -248,30 +251,12 @@ fun FTPFileList(uiState: BrowseUiState, onIntent: (BrowseUiIntent) -> Unit) {
             }
         }
 
-        BrowseTransferFloatingStatusButton(
-            modifier = Modifier.align(Alignment.BottomStart),
-            onClick = {
-                transferPanelVisible = true
-            },
-        )
-
         // Use toolbar instead
 //        BrowseFloatingActionMenu(
 //            modifier = Modifier.align(Alignment.BottomEnd),
 //            barStatus = uiState.toolbarStatus,
 //            onIntent = onIntent,
 //        )
-
-        if (transferPanelVisible) {
-            BrowseTransferBottomSheet(
-                onDismiss = {
-                    transferPanelVisible = false
-                },
-                uiState.transferringFile,
-                uiState.transferredFile,
-                onIntent
-            )
-        }
     }
 }
 
@@ -283,7 +268,7 @@ fun BrowseTopAppBar(
     appbarStatus: BrowseToolbarStatus,
     scrollBehavior: TopAppBarScrollBehavior,
     onIntent: (BrowseUiIntent) -> Unit,
-    onSearchClick: () -> Unit,
+    onTransferClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
 
@@ -303,11 +288,11 @@ fun BrowseTopAppBar(
         },
         actions = {
             IconButton(
-                onClick = onSearchClick
+                onClick = onTransferClicked
 
             ) {
                 Icon(
-                    painter = painterResource(Res.drawable.ic_search),
+                    painter = painterResource(Res.drawable.ic_swap),
                     contentDescription = null
                 )
             }
@@ -359,7 +344,7 @@ fun PreviewBrowseTopBar() {
         scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(),
         onIntent = {},
         appbarStatus = BrowseToolbarStatus.STANDARD,
-        onSearchClick = {},
+        onTransferClicked = {},
     )
 }
 

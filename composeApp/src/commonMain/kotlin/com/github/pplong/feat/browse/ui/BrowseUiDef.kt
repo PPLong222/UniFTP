@@ -12,9 +12,11 @@ import uniftp.composeapp.generated.resources.ic_delete
 import uniftp.composeapp.generated.resources.ic_file
 import uniftp.composeapp.generated.resources.ic_image_upload
 import uniftp.composeapp.generated.resources.ic_refresh
+import uniftp.composeapp.generated.resources.ic_swap
 import uniftp.composeapp.generated.resources.nickname
 import uniftp.composeapp.generated.resources.search_all_places
 import uniftp.composeapp.generated.resources.search_current_folder
+import uniftp.composeapp.generated.resources.select
 import uniftp.composeapp.generated.resources.upload
 import uniftp.composeapp.generated.resources.upload_files
 import uniftp.composeapp.generated.resources.upload_media

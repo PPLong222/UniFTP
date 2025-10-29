@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.github.pplong.core.api.rememberFilePicker
 import com.github.pplong.core.api.rememberMediaPicker
+import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiEffect
 import com.github.pplong.feat.browse.BrowseUiIntent
@@ -46,6 +47,7 @@ fun BrowseScreen(
     val state by viewModel.uiState.collectAsState()
 
     var searchActive by remember { mutableStateOf(false) }
+    var transferPanelVisible by remember { mutableStateOf(false) }
 
     // File picker for upload
     val filePicker = rememberFilePicker { results ->
@@ -94,15 +96,17 @@ fun BrowseScreen(
                     scrollBehavior = scrollBehavior,
                     appbarStatus = state.toolbarStatus,
                     onIntent = viewModel::sendIntent,
-                    onSearchClick = { searchActive = true }
+                    onTransferClicked = { transferPanelVisible = true }
                 )
             }
         },
         floatingActionButton = {
-            BrowseFloatingToolbar(
-                barStatus = state.toolbarStatus,
-                onIntent = viewModel::sendIntent
-            )
+            if (state.requestStatus == CommonRequestStatus.SUCCESS) {
+                BrowseFloatingToolbar(
+                    barStatus = state.toolbarStatus,
+                    onIntent = viewModel::sendIntent
+                )
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -122,22 +126,22 @@ fun BrowseScreen(
                 }
             }
 
-            if (searchActive) {
-                BrowseSearchBar(
-                    cancel = {
-                        searchActive = false
-                    },
-                    onSearch = { query, local ->
-                        viewModel.sendIntent(
-                            BrowseUiIntent.StartSearch(
-                                query,
-                                local
-                            )
-                        )
-                    },
-                    searchState = state.searchState,
-                )
-            }
+//            if (searchActive) {
+//                BrowseSearchBar(
+//                    cancel = {
+//                        searchActive = false
+//                    },
+//                    onSearch = { query, local ->
+//                        viewModel.sendIntent(
+//                            BrowseUiIntent.StartSearch(
+//                                query,
+//                                local
+//                            )
+//                        )
+//                    },
+//                    searchState = state.searchState,
+//                )
+//            }
         }
     }
 
@@ -174,5 +178,16 @@ fun BrowseScreen(
                 onConfirm = { viewModel.sendIntent(BrowseUiIntent.OnCreateFolderConfirmClicked) }
             )
         }
+    }
+
+    if (transferPanelVisible) {
+        BrowseTransferBottomSheet(
+            onDismiss = {
+                transferPanelVisible = false
+            },
+            state.transferringFile,
+            state.transferredFile,
+            viewModel::sendIntent
+        )
     }
 }
