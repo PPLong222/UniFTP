@@ -14,23 +14,25 @@ import java.io.OutputStream
 class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
 
     companion object {
-        private const val BUFFER_SIZE = 64 * 1024
+        private const val BUFFER_SIZE = 256 * 1024
     }
 
     override suspend fun downloadFile(
         remotePath: String,
         callback: DownloadCallback
     ): Boolean = withContext(Dispatchers.IO) {
-        return@withContext downloadFileWithResume(remotePath, callback, 0L)
+        return@withContext downloadFileWithResume(remotePath, null, callback, 0L)
     }
 
     override suspend fun downloadFileWithResume(
         remotePath: String,
+        localUri: String?,
         callback: DownloadCallback,
         resumeOffset: Long
     ): Boolean = withContext(Dispatchers.IO) {
         ssh.newStatefulSFTPClient().use { sftp ->
             val fileSize = getFileSize(remotePath)
+            val isNew = localUri == null
             if (fileSize < 0) {
                 val error = IllegalArgumentException("Failed to get file size for: $remotePath")
                 println(error.message)
@@ -47,27 +49,34 @@ class SshjTransferSftpClient : SshjSftpBaseClient(), ITransferFTPClient {
                 return@withContext false
             }
             // Get output stream from callback
-            val outputStreamPair = callback.openOutputStream(fileSize, resumeOffset)
-            if (outputStreamPair == null) {
+            val outputStreamInfo = if (isNew) {
+                callback.openOutputStream(fileSize, resumeOffset)
+            } else {
+                callback.openOutputStream(localUri)
+            }
+
+            if (outputStreamInfo == null) {
                 val error = IllegalStateException("Failed to open output stream")
                 println(error.message)
                 callback.onError(error)
                 return@withContext false
             }
 
-            val (outputStreamAny, existingFileSize) = outputStreamPair
-            val outputStream = outputStreamAny as? OutputStream
+            val outputStream = outputStreamInfo.stream as? OutputStream
             if (outputStream == null) {
-                val error = IllegalArgumentException("Invalid output stream type")
+                val error = IllegalStateException("Failed to convert to output stream")
                 println(error.message)
                 callback.onError(error)
                 return@withContext false
             }
+            val existingFileSize = outputStreamInfo.fileSize
 
             outputStream.use {
                 // Determine actual resume offset (use existing file size if available)
-                val actualResumeOffset =
-                    if (existingFileSize > 0) existingFileSize else resumeOffset
+                if (localUri == null) {
+                    callback.onOutputConfirmed(outputStreamInfo.uri)
+                }
+                val actualResumeOffset = existingFileSize
                 // Validate resume offset
                 if (actualResumeOffset > fileSize) {
                     val error = IllegalArgumentException(

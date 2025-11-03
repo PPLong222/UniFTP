@@ -96,6 +96,9 @@ interface TransferTaskDao {
     @Query("UPDATE transfer_tasks SET bytesTransferred = :bytesTransferred WHERE id = :taskId")
     suspend fun updateBytesTransferred(taskId: String, bytesTransferred: Long)
 
+    @Query("UPDATE transfer_tasks SET localUri = :uri WHERE id = :taskId")
+    suspend fun updateTransferUriByTaskId(taskId: String, uri: String)
+
     /**
      * Observe active tasks (pending or in progress)
      */

@@ -2,7 +2,6 @@ package com.github.pplong
 
 import KoinInitializer
 import android.app.Application
-import com.github.pplong.sftp.PlatformDownloadCallbackFactory
 import com.github.pplong.sftp.PlatformUploadCallbackFactory
 
 class MyApp: Application() {
@@ -10,7 +9,6 @@ class MyApp: Application() {
         super.onCreate()
         KoinInitializer(applicationContext).init()
         // Initialize platform-specific callback factories
-        PlatformDownloadCallbackFactory.init(this)
         PlatformUploadCallbackFactory.init(this)
     }
 }

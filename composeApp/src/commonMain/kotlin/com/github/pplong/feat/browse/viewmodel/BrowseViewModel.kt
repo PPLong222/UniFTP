@@ -19,6 +19,7 @@ import com.github.pplong.feat.browse.ui.BrowseToolbarStatus
 import com.github.pplong.feat.browse.ui.BrowseTransferType
 import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.feat.transfer.ProgressMonitor
+import com.github.pplong.feat.transfer.ProgressState
 import com.github.pplong.feat.transfer.TransferManagerFactory
 import com.github.pplong.feat.transfer.model.TransferDirection
 import com.github.pplong.feat.transfer.model.TransferStatus
@@ -47,7 +48,9 @@ class BrowseViewModel(
         transferManager.observeTransfers(ftpServer.id),
         progressMonitor.observeAllProgress()
     ) { transfers, progressUpdates ->
-        progressUpdates.map { update ->
+        println("transfers: $transfers")
+        println("progressUpdates $progressUpdates")
+        progressUpdates.filter { it.state == ProgressState.RUNNING }.map { update ->
             FTPFileTransferringUiModel(
                 file = FTPFileUiModel(
                     name = update.fileName,
@@ -75,7 +78,7 @@ class BrowseViewModel(
                 FTPFileTransferringUiModel(
                     file = FTPFileUiModel(
                         name = it.task.fileName,
-                        path = "",
+                        path = it.task.remotePath,
                         parentPath = "",
                         isDirectory = false,
                         size = it.task.size,
@@ -157,7 +160,7 @@ class BrowseViewModel(
                             if (browseFile != null) {
                                 fileModel.copy(status = browseFile.status)
                             } else {
-                                fileModel.copy(status = BrowseFileLoadingStatus.None)
+                                fileModel
                             }
                         }
                     )
@@ -517,9 +520,20 @@ class BrowseViewModel(
     }
 
     private fun onLoadingTaskClicked(taskId: String) {
-        viewModelScope.launch {
-            println("Pause ${taskId}")
-            transferManager.pausedTransfer(taskId)
+        val fileItem = uiState.value.transferringFile.find { it.taskId == taskId }
+        if (fileItem == null) {
+            return
+        }
+        if (fileItem.status is BrowseFileLoadingStatus.Loading) {
+            viewModelScope.launch {
+                println("Pause ${taskId}")
+                transferManager.pausedTransfer(taskId)
+            }
+        } else if (fileItem.status is BrowseFileLoadingStatus.Paused) {
+            viewModelScope.launch {
+                println("Pause ${taskId}")
+                transferManager.resumeTransfer(taskId)
+            }
         }
     }
 }

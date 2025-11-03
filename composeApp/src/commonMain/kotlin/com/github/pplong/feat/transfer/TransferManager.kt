@@ -44,6 +44,7 @@ interface TransferManager {
      * Clear completed transfers
      */
     suspend fun clearCompleted()
+    suspend fun resumeTransfer(taskId: String)
 }
 
 /**

@@ -5,48 +5,32 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.core.net.toUri
-import java.io.OutputStream
+import com.github.pplong.feat.transfer.TransferCancelledException
 
 /**
  * Android-specific implementation of DownloadCallbackFactory
  * Supports both content:// URIs (Scoped Storage) and legacy file paths
  */
-class AndroidDownloadCallbackFactory(
-    private val context: Context
-) : DownloadCallbackFactory {
-    override fun create(
-        remotePath: String,
-        fileName: String,
-        downloadDir: String,
-        onProgressUpdate: (Float) -> Unit,
-        onComplete: () -> Unit,
-        onError: (Throwable) -> Unit
-    ): DownloadCallback {
-        return AndroidDownloadCallback(
-            context = context,
-            fileName = fileName,
-            downloadDir = downloadDir,
-            onProgressUpdate = onProgressUpdate,
-            onComplete = onComplete,
-            onError = onError
-        )
-    }
-}
 
 /**
  * Android-specific DownloadCallback implementation
  * Supports content:// URIs for Android 10+ Scoped Storage
  */
-private class AndroidDownloadCallback(
+class AndroidDownloadCallback(
     private val context: Context,
     private val fileName: String,
     private val downloadDir: String,
-    private val onProgressUpdate: (Float) -> Unit,
+    private val onProgressUpdate: (Long, Long) -> Unit,
     private val onComplete: () -> Unit,
-    private val onError: (Throwable) -> Unit
+    private val onError: (Throwable) -> Unit,
+    private val onOutputConfirmed: suspend (String) -> Unit,
+    private val isCancelled: () -> Boolean
 ) : DownloadCallback {
+    private var lastTimeStamp = 0L
+    private var lastBytesTransferred: Long = 0
+    private var lastSpeed = 0L
 
-    override suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): Pair<Any, Long>? {
+    override suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): OutputStreamInfo? {
         return try {
             val contentResolver = context.contentResolver
 
@@ -64,6 +48,20 @@ private class AndroidDownloadCallback(
         }
     }
 
+    override suspend fun openOutputStream(localUri: String): OutputStreamInfo? {
+        val contentResolver = context.contentResolver
+        val uri = localUri.toUri()
+        val fileSize = getFileSize(contentResolver, uri)
+        val outputStream = contentResolver.openOutputStream(uri, "wa")
+            ?: return null
+
+
+        return OutputStreamInfo(
+            outputStream,
+            localUri, fileSize
+        )
+    }
+
     /**
      * Open OutputStream for content:// URI (Android 10+ Scoped Storage)
      *
@@ -74,7 +72,7 @@ private class AndroidDownloadCallback(
         contentResolver: ContentResolver,
         dirUriString: String,
         fileName: String
-    ): Pair<OutputStream, Long>? {
+    ): OutputStreamInfo? {
         try {
             val dirUri = dirUriString.toUri()
 
@@ -92,7 +90,12 @@ private class AndroidDownloadCallback(
             val outputStream = contentResolver.openOutputStream(newUri, "w")
                 ?: return null
 
-            return outputStream to 0L
+
+            return OutputStreamInfo(
+                outputStream,
+                newUri.toString(),
+                0L
+            )
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -109,7 +112,7 @@ private class AndroidDownloadCallback(
     private fun openFileOutputStream(
         dirPath: String,
         fileName: String
-    ): Pair<OutputStream, Long>? {
+    ): OutputStreamInfo? {
         try {
             val dir = java.io.File(dirPath)
             dir.mkdirs()
@@ -118,7 +121,11 @@ private class AndroidDownloadCallback(
             val uniqueFile = generateUniqueFileName(dir, fileName)
 
             val outputStream = java.io.FileOutputStream(uniqueFile, false)
-            return outputStream to 0L
+            return OutputStreamInfo(
+                outputStream,
+                uniqueFile.toUri().toString(),
+                0L
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             return null
@@ -167,13 +174,18 @@ private class AndroidDownloadCallback(
 
             contentResolver.query(
                 childrenUri,
-                arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME),
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                ),
                 null,
                 null,
                 null
             )?.use { cursor ->
-                val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-                val nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                val idColumn =
+                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                val nameColumn =
+                    cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
 
                 while (cursor.moveToNext()) {
                     val name = cursor.getString(nameColumn)
@@ -225,7 +237,8 @@ private class AndroidDownloadCallback(
                 null
             )?.use { cursor ->
                 if (cursor.moveToFirst()) {
-                    val sizeIndex = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE)
+                    val sizeIndex =
+                        cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE)
                     cursor.getLong(sizeIndex)
                 } else {
                     0L
@@ -238,10 +251,19 @@ private class AndroidDownloadCallback(
     }
 
     override fun onProgress(bytesTransferred: Long, totalBytes: Long) {
-        if (totalBytes > 0) {
-            val progress = bytesTransferred.toFloat() / totalBytes.toFloat()
-            onProgressUpdate(progress)
+        if (isCancelled()) {
+            println("[WorkerDownloadCallback] Transfer cancelled, throwing exception")
+            throw TransferCancelledException("Download cancelled by user")
         }
+        val currentTimeStamp = System.currentTimeMillis()
+
+        if (currentTimeStamp - lastTimeStamp > 500L) {
+            lastSpeed =
+                (bytesTransferred - lastBytesTransferred) * 1000 / (currentTimeStamp - lastTimeStamp)
+            lastBytesTransferred = bytesTransferred
+            lastTimeStamp = currentTimeStamp
+        }
+        onProgressUpdate(bytesTransferred, lastSpeed)
     }
 
     override fun onComplete() {
@@ -250,5 +272,9 @@ private class AndroidDownloadCallback(
 
     override fun onError(error: Throwable) {
         onError.invoke(error)
+    }
+
+    override suspend fun onOutputConfirmed(outputStream: String) {
+        onOutputConfirmed.invoke(outputStream)
     }
 }

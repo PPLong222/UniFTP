@@ -14,14 +14,16 @@ class JvmFileDownloadCallbackFactory : DownloadCallbackFactory {
         downloadDir: String,
         onProgressUpdate: (Float) -> Unit,
         onComplete: () -> Unit,
-        onError: (Throwable) -> Unit
+        onError: (Throwable) -> Unit,
+        onOutputConfirmed: (String) -> Unit
     ): DownloadCallback {
         return JvmFileDownloadCallback(
             fileName = fileName,
             downloadDir = downloadDir,
             onProgressUpdate = onProgressUpdate,
             onComplete = onComplete,
-            onError = onError
+            onError = onError,
+            onOutputConfirmed = onOutputConfirmed
         )
     }
 }
@@ -35,10 +37,11 @@ private class JvmFileDownloadCallback(
     private val downloadDir: String,
     private val onProgressUpdate: (Float) -> Unit,
     private val onComplete: () -> Unit,
-    private val onError: (Throwable) -> Unit
+    private val onError: (Throwable) -> Unit,
+    private val onOutputConfirmed: (String) -> Unit
 ) : DownloadCallback {
 
-    override suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): Pair<Any, Long>? {
+    override suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): OutputStreamInfo? {
         return try {
             val dir = File(downloadDir)
             dir.mkdirs()
@@ -50,12 +53,21 @@ private class JvmFileDownloadCallback(
             // Create output stream (always new file, no append)
             val outputStream = FileOutputStream(uniqueFile, false)
 
-            outputStream to 0L
+            OutputStreamInfo(
+                outputStream,
+                uniqueFile.toURI().path,
+                0L
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             onError(e)
             null
         }
+    }
+
+    override suspend fun openOutputStream(localUri: String): OutputStreamInfo? {
+        // TODO: Implement for Android with content:// URIs
+        return null
     }
 
     /**

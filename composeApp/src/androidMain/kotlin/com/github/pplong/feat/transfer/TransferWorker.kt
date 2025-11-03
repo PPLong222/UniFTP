@@ -12,7 +12,7 @@ import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.feat.transfer.model.TransferTask
 import com.github.pplong.feat.transfer.model.TransferTaskDao
 import com.github.pplong.feat.transfer.model.TransferTaskEmbedded
-import com.github.pplong.sftp.AndroidDownloadCallbackFactory
+import com.github.pplong.sftp.AndroidDownloadCallback
 import com.github.pplong.sftp.AndroidUploadCallbackFactory
 import com.github.pplong.sftp.FTPClientManager
 import com.github.pplong.sftp.SFTPClientFactory
@@ -37,7 +37,7 @@ class TransferWorker(
 
     companion object {
         const val KEY_TASK_ID = "task_id"
-        const val PROGRESS_KEY = "progress"
+        const val PROGRESS = "progress"
         const val SPEED = "speed"
         const val BYTES_TRANSFERRED = "bytes_transferred"
         const val PROGRESS_MAX = 100
@@ -77,7 +77,7 @@ class TransferWorker(
             // Check if stopped before transfer
             if (isStopped) {
                 println("[TransferWorker] Worker stopped, cancelling task: $taskId")
-                transferTaskDao.updateStatus(taskId = taskId, status = TransferStatus.CANCELLED)
+//                transferTaskDao.updateStatus(taskId = taskId, status = TransferStatus.PAUSED)
                 return Result.failure(workDataOf("error" to "Transfer cancelled"))
             }
 
@@ -90,10 +90,10 @@ class TransferWorker(
         } catch (e: TransferCancelledException) {
             println("[TransferWorker] Transfer cancelled: ${e.message}")
             // Update task status to CANCELLED (not FAILED)
-            transferTaskDao.updateStatus(
-                taskId = taskId,
-                status = TransferStatus.CANCELLED,
-            )
+//            transferTaskDao.updateStatus(
+//                taskId = taskId,
+//                status = TransferStatus.CANCELLED,
+//            )
             Result.failure(workDataOf("error" to "Transfer cancelled"))
         } catch (e: Exception) {
             println("[TransferWorker] Transfer failed: ${e.message}")
@@ -114,7 +114,7 @@ class TransferWorker(
      */
     private suspend fun executeDownload(taskEmbedded: TransferTaskEmbedded): Result {
         println("[TransferWorker] Executing download: ${taskEmbedded.task.fileName}")
-
+        val task = taskEmbedded.task
         val server = taskEmbedded.server
         // Create FTP client manager
         val config = FTPConfig(
@@ -135,7 +135,6 @@ class TransferWorker(
 
         return try {
             // Create download callback
-            val callbackFactory = AndroidDownloadCallbackFactory(appContext)
             val transferClient = SFTPClientFactory.createTransferClient()
 
             if (!transferClient.initClient(config)) {
@@ -143,38 +142,45 @@ class TransferWorker(
                 throw IllegalStateException("Failed to initialize transfer client")
             }
 
-            val result = try {
-                val callback = WorkerDownloadCallback(
-                    taskEmbedded = taskEmbedded,
-                    callbackFactory = callbackFactory,
-                    transferTaskDao = transferTaskDao,
-                    notificationHelper = notificationHelper,
-                    onSetProgress = { bytesTransferred, speed ->
-                        val progress = bytesTransferred * 1.0f / taskEmbedded.task.size
-                        setProgressAsync(
-                            workDataOf(
-                                PROGRESS_KEY to progress,
-                                SPEED to speed,
-                                BYTES_TRANSFERRED to bytesTransferred
-                            )
+            val callback = AndroidDownloadCallback(
+                context = appContext,
+                fileName = task.fileName,
+                downloadDir = taskEmbedded.server.downloadDir!!,
+                onProgressUpdate = { bytesTransferred, speed ->
+                    val progress = bytesTransferred * 1.0f / taskEmbedded.task.size
+                    println(progress)
+                    setProgressAsync(
+                        workDataOf(
+                            PROGRESS to progress,
+                            SPEED to speed,
+                            BYTES_TRANSFERRED to bytesTransferred
                         )
-                    },
-                    isCancelled = { isStopped }
-                )
+                    )
+                },
+                onComplete = {},
+                onError = {},
+                onOutputConfirmed = { uri ->
+                    transferTaskDao.updateTransferUriByTaskId(taskEmbedded.task.id, uri)
+                },
+                isCancelled = { isStopped }
+            )
 
+            val result = try {
                 // Start download with resume support
-//                val success = if (task.transferredBytes > 0) {
-//                    transferClient.downloadFileWithResume(
-//                        remotePath = task.remotePath,
-//                        callback = callback,
-//                        resumeOffset = task.transferredBytes
-//                    )
-//                } else {
-                // TODO complete downloadwithreumse
-                val success = transferClient.downloadFile(
-                    remotePath = taskEmbedded.task.remotePath,
-                    callback = callback
-                )
+                val success = if (task.bytesTransferred > 0) {
+                    transferClient.downloadFileWithResume(
+                        remotePath = task.remotePath,
+                        callback = callback,
+                        localUri = task.localUri,
+                        resumeOffset = task.bytesTransferred
+                    )
+                } else {
+                    // TODO complete downloadwithreumse
+                    transferClient.downloadFile(
+                        remotePath = taskEmbedded.task.remotePath,
+                        callback = callback
+                    )
+                }
 
                 if (success) {
                     // Update task status to COMPLETED
@@ -244,7 +250,7 @@ class TransferWorker(
                         val progress = bytesTransferred * 1.0f / taskEmbedded.task.size
                         setProgressAsync(
                             workDataOf(
-                                PROGRESS_KEY to progress,
+                                PROGRESS to progress,
                                 SPEED to speed,
                                 BYTES_TRANSFERRED to bytesTransferred
                             )

@@ -1,5 +1,11 @@
 package com.github.pplong.sftp
 
+
+data class OutputStreamInfo(
+    val stream: Any,
+    val uri: String,
+    val fileSize: Long
+)
 /**
  * Callback interface for download operations
  */
@@ -14,7 +20,9 @@ interface DownloadCallback {
      *         - OutputStream: where to write the data
      *         - Long: current size of existing file (for resume support), 0 for new download
      */
-    suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): Pair<Any, Long>?
+    suspend fun openOutputStream(fileSize: Long, resumeOffset: Long): OutputStreamInfo?
+
+    suspend fun openOutputStream(localUri: String): OutputStreamInfo?
 
     /**
      * Called when download progress updates
@@ -33,6 +41,7 @@ interface DownloadCallback {
      * @param error The error that occurred
      */
     fun onError(error: Throwable) {}
+    suspend fun onOutputConfirmed(outputStream: String) {}
 }
 
 /**
@@ -95,6 +104,7 @@ interface ITransferFTPClient : IBaseFTPClient {
      */
     suspend fun downloadFileWithResume(
         remotePath: String,
+        localUri: String?,
         callback: DownloadCallback,
         resumeOffset: Long = 0L
     ): Boolean

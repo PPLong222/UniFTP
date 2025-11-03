@@ -7,7 +7,7 @@ import com.github.pplong.feat.transfer.model.TransferTaskDao
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -47,18 +47,17 @@ actual class ProgressMonitor(
                     // Create a Flow for each task's progress
                     val progressFlows = taskWorkMap.map { (taskId, workId) ->
                         workManager.getWorkInfoByIdFlow(workId)
-                            .filter { it?.state != WorkInfo.State.SUCCEEDED }
+                            .filterNotNull()
                             .map { workInfo ->
-                                println("[ProgressMonitor] WorkInfo for $taskId: state=${workInfo?.state}, progress=${workInfo?.progress?.getInt(TransferWorker.PROGRESS_KEY, -1)}")
-                                workInfo?.let { convertToProgressUpdate(taskId, it) }
+                                convertToProgressUpdate(
+                                    taskId,
+                                    workInfo
+                                )
                             }
+                            .filterNotNull()
                     }
-
-                    // Combine all flows
-                    combine(progressFlows) { updates ->
-                        val filtered = updates.filterNotNull().filter { it.progress < 1F }
-                        println("[ProgressMonitor] Emitting ${filtered.size} progress updates")
-                        filtered
+                    combine(progressFlows) {
+                        it.toList()
                     }
                 }
             }
@@ -85,7 +84,7 @@ actual class ProgressMonitor(
         }
 
         val progress = if (workInfo.state == WorkInfo.State.RUNNING) {
-            workInfo.progress.getFloat(TransferWorker.PROGRESS_KEY, 0F)
+            workInfo.progress.getFloat(TransferWorker.PROGRESS, 0F)
         } else {
             0f
         }

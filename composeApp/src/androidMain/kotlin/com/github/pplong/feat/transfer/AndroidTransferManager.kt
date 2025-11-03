@@ -245,4 +245,9 @@ class AndroidTransferManager(
             bytesTransferred = bytesTransferred,
         )
     }
+
+    suspend fun resumeTransfer(taskId: String) {
+        val task = transferTaskDao.getTasksEmbeddedById(taskId) ?: return
+        enqueueWork(task.task)
+    }
 }

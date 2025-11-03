@@ -54,6 +54,10 @@ private class AndroidTransferManagerImpl : TransferManager, KoinComponent {
     override suspend fun clearCompleted() {
         androidManager.clearCompleted()
     }
+
+    override suspend fun resumeTransfer(taskId: String) {
+        androidManager.resumeTransfer(taskId)
+    }
 }
 
 actual object TransferManagerFactory {

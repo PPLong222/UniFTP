@@ -7,29 +7,24 @@ import com.github.pplong.feat.transfer.model.TransferStatus
 import com.github.pplong.feat.transfer.model.TransferTask
 import com.github.pplong.feat.transfer.model.TransferTaskEmbedded
 import com.github.pplong.sftp.DownloadCallback
-import documentDirectory
 import com.github.pplong.sftp.FTPClientManager
-import com.github.pplong.sftp.PlatformDownloadCallbackFactory
 import com.github.pplong.sftp.PlatformUploadCallbackFactory
 import com.github.pplong.sftp.SFTPClientFactory
 import com.github.pplong.sftp.UploadCallback
 import com.github.pplong.sftp.def.FTPConfig
+import documentDirectory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import platform.Foundation.NSDate
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUUID
-import platform.Foundation.timeIntervalSince1970
 
 /**
  * iOS-specific transfer manager
