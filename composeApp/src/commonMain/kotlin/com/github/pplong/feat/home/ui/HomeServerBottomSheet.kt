@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -21,18 +22,19 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.pplong.core.api.rememberDirectoryPicker
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.core.def.ServerPortInfo
 import com.github.pplong.core.widgets.PasswordTextField
+import com.github.pplong.feat.home.EditServerNicknameState
 import com.github.pplong.feat.home.EditServerState
 import com.github.pplong.feat.home.HomeUiIntent
 import org.jetbrains.compose.resources.painterResource
@@ -45,10 +47,12 @@ import uniftp.composeapp.generated.resources.ic_thumb_up
 import uniftp.composeapp.generated.resources.network_error_tip
 import uniftp.composeapp.generated.resources.next
 import uniftp.composeapp.generated.resources.nickname
+import uniftp.composeapp.generated.resources.nickname_already_exist
 import uniftp.composeapp.generated.resources.path_with_placeholder
 import uniftp.composeapp.generated.resources.port
 import uniftp.composeapp.generated.resources.test_again
 import uniftp.composeapp.generated.resources.test_connectivity
+import uniftp.composeapp.generated.resources.use_default_download_dir
 import uniftp.composeapp.generated.resources.user
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -274,35 +278,70 @@ internal fun EditFTPServerConfigureBottomSheetContent(
             },
             label = { Text(stringResource(Res.string.nickname)) },
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            supportingText = {
+                when (editServerState.error.nicknameState) {
+                    EditServerNicknameState.DUPLICATE -> {
+                        Text(
+                            stringResource(Res.string.nickname_already_exist),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    null -> {}
+                }
+            }
         )
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Customize download path")
+            Text(stringResource(Res.string.use_default_download_dir))
             Spacer(Modifier.weight(1f))
-            Button(onClick = {
-                directoryPicker()
-            }, shape = RoundedCornerShape(size = 8.dp)) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_file_open),
-                    contentDescription = null
-                )
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(
-                    Res.string.path_with_placeholder,
-                    editServerState.server.downloadDir ?: ""
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+            Switch(
+                checked = editServerState.server.useDefaultDownloadDir,
+                onCheckedChange = { checked ->
+                    onIntent(
+                        HomeUiIntent.OnChangeServerInfo(
+                            editServerState.server.copy(
+                                useDefaultDownloadDir = checked
+                            )
+                        )
+                    )
+                }
             )
         }
 
+        AnimatedContent(editServerState.server.useDefaultDownloadDir) { targetState ->
+            when (targetState) {
+                true -> {}
+                false -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(
+                                Res.string.path_with_placeholder,
+                                editServerState.server.downloadDir ?: ""
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = {
+                            directoryPicker()
+                        }, shape = RoundedCornerShape(size = 8.dp)) {
+                            Icon(
+                                painter = painterResource(Res.drawable.ic_file_open),
+                                contentDescription = null
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         Button(
+            enabled = editServerState.isSaveEnabled,
             onClick = { onIntent(HomeUiIntent.SaveServer) },
             modifier = Modifier.padding(12.dp)
         ) {

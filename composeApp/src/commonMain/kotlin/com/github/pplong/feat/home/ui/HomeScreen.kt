@@ -3,8 +3,10 @@ package com.github.pplong.feat.home.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,6 +40,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import uniftp.composeapp.generated.resources.Res
 import uniftp.composeapp.generated.resources.ic_add
 import uniftp.composeapp.generated.resources.ic_server
+import uniftp.composeapp.generated.resources.no_server_yet_tip
 import uniftp.composeapp.generated.resources.user_with_host
 
 @Preview
@@ -87,7 +90,7 @@ fun HomeScreen(navController: NavHostController) {
             )
         }
     }) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             HostPage(state.serverList, viewModel::sendIntent)
         }
     }
@@ -100,7 +103,16 @@ fun HostPage(
     onIntent: (HomeUiIntent) -> Unit,
 ) {
     if (list.isEmpty()) {
-        Text("None")
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_server), contentDescription = null,
+                modifier = Modifier.padding(top = 80.dp).size(80.dp)
+            )
+            Text(stringResource(Res.string.no_server_yet_tip))
+        }
     } else {
         LazyColumn() {
             items(list) { server ->

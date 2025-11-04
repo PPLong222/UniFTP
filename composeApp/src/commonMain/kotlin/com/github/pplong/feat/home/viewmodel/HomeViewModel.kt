@@ -1,8 +1,10 @@
 package com.github.pplong.feat.home.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.github.pplong.core.api.DownloadDirProvider
 import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.def.CommonRequestStatus
+import com.github.pplong.feat.home.EditServerNicknameState
 import com.github.pplong.feat.home.EditServerState
 import com.github.pplong.feat.home.HomeUiEffect
 import com.github.pplong.feat.home.HomeUiIntent
@@ -22,18 +24,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class HomeViewModel(
-    private val ftpServerDao: FTPServerDao
+    private val ftpServerDao: FTPServerDao,
+    private val downloadDirProvider: DownloadDirProvider
 ) : BaseViewModel<HomeUiState, HomeUiIntent, HomeUiEffect>() {
+
+    private var defaultDownloadDir: String = ""
 
     init {
         viewModelScope.launch {
             loadServerList()
         }
+        loadDefaultDownloadDir()
     }
 
     override fun initialState(): HomeUiState {
         return HomeUiState()
     }
+
 
     override suspend fun handleIntent(intent: HomeUiIntent) {
         when (intent) {
@@ -47,12 +54,25 @@ class HomeViewModel(
         }
     }
 
+    private fun loadDefaultDownloadDir() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val dir = downloadDirProvider.getDefaultDownloadDir()
+            withContext(Dispatchers.Main) {
+                defaultDownloadDir = dir
+            }
+        }
+    }
+
     // Dialog management
     private fun dismissEditDialog() {
         setState {
             copy(
                 isEditDialogVisible = false,
-                editServerState = EditServerState() // Reset edit state
+                editServerState = EditServerState(
+                    server = EditFTPServerItem(
+                        defaultDownloadDir = defaultDownloadDir,
+                    )
+                )
             )
         }
     }
@@ -61,7 +81,11 @@ class HomeViewModel(
         setState {
             copy(
                 isEditDialogVisible = true,
-                editServerState = EditServerState() // Fresh state for new server
+                editServerState = EditServerState(
+                    server = EditFTPServerItem(
+                        defaultDownloadDir = defaultDownloadDir,
+                    )
+                )
             )
         }
     }
@@ -69,7 +93,39 @@ class HomeViewModel(
     // Edit server logic
     private fun onChangeServerInfo(editServer: EditFTPServerItem) {
         setState {
-            copy(editServerState = editServerState.copy(server = editServer))
+            copy(
+                editServerState = editServerState.copy(
+                    server = editServer,
+                    status = CommonRequestStatus.INITIAL
+                )
+            )
+        }
+
+        validServerInfo(editServer)
+    }
+
+    private fun validServerInfo(editServer: EditFTPServerItem) {
+        val serverList = uiState.value.serverList
+        if (serverList.any { it.nickname == editServer.nickname }) {
+            setState {
+                copy(
+                    editServerState = editServerState.copy(
+                        error = editServerState.error.copy(
+                            nicknameState = EditServerNicknameState.DUPLICATE
+                        )
+                    )
+                )
+            }
+        } else {
+            setState {
+                copy(
+                    editServerState = editServerState.copy(
+                        error = editServerState.error.copy(
+                            nicknameState = null
+                        )
+                    )
+                )
+            }
         }
     }
 

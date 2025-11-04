@@ -27,9 +27,12 @@
     <string name="downloading">Downloading</string>
     <string name="uploading">Uploading</string>
     <string name="completed">Completed</string>
-
+    <string name="no_server_yet_tip">No Server Yet...</string>
     <string name="search_current_folder">Current Folder</string>
     <string name="search_all_places">All Places</string>
+
+    <string name="nickname_already_exist">Nickname already exists</string>
+    <string name="use_default_download_dir">Use Default Download Folder</string>
 
     <!--Dialog-->
     <string name="remove_dialog_tip">Are you sure to remove these %1$s files?</string>

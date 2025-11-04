@@ -12,7 +12,21 @@ data class EditServerState(
     val server: EditFTPServerItem = EditFTPServerItem(),
     val configureState: EditConfigureState = EditConfigureState.CONNECTING,
     val status: CommonRequestStatus = CommonRequestStatus.INITIAL,
-)
+    val error: EditServerErrorState = EditServerErrorState()
+) {
+    val isSaveEnabled =
+        error.noError && ((!server.useDefaultDownloadDir && server.downloadDir != null) || server.useDefaultDownloadDir)
+}
+
+data class EditServerErrorState(
+    val nicknameState: EditServerNicknameState? = null,
+) {
+    val noError = nicknameState == null
+}
+
+enum class EditServerNicknameState {
+    DUPLICATE
+}
 
 data class HomeUiState(
     val serverList: List<FTPServerItem> = emptyList(),

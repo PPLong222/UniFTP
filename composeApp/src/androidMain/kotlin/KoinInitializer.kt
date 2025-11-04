@@ -12,7 +12,14 @@ actual class KoinInitializer(
             androidContext(context)
             androidLogger()
             workManagerFactory()
-            modules(appModule, platformModule(), viewModelModule, dataModule, jvmModule)
+            modules(
+                appModule,
+                platformModule(),
+                sharedViewModelModule,
+                viewModelModule,
+                dataModule,
+                jvmModule
+            )
         }
         
     }

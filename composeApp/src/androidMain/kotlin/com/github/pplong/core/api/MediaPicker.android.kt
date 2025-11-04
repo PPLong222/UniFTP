@@ -1,6 +1,9 @@
 package com.github.pplong.core.api
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -8,7 +11,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
+import java.io.File
 
 /**
  * Android implementation of media picker using PickVisualMedia contract
@@ -170,4 +173,16 @@ actual fun rememberDirectoryPicker(
         onDirectorySelected(uri?.toString())
     }
     return { launcher.launch(null) }
+}
+
+class AndroidDownloadDirProvider(
+    private val context: Context
+) : DownloadDirProvider {
+
+    override suspend fun getDefaultDownloadDir(): String {
+        val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: File(context.filesDir, "downloads")
+        if (!dir.exists()) dir.mkdirs()
+        return dir.absolutePath
+    }
 }

@@ -40,3 +40,7 @@ expect fun rememberFilePicker(
 expect fun rememberDirectoryPicker(
     onDirectorySelected: (String?) -> Unit
 ): () -> Unit
+
+interface DownloadDirProvider {
+    suspend fun getDefaultDownloadDir(): String
+}
