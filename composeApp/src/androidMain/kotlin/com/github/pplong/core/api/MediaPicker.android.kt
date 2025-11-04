@@ -11,7 +11,11 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import com.github.pplong.core.def.LocalFile
+import com.github.pplong.core.utils.getFileNameFromUri
 import java.io.File
+import java.io.FileOutputStream
 
 /**
  * Android implementation of media picker using PickVisualMedia contract
@@ -86,7 +90,7 @@ actual fun rememberMediaPicker(
  * Android implementation of file picker using OpenMultipleDocuments contract
  */
 @Composable
-actual fun rememberFilePicker(
+actual fun rememberMultipleFilePicker(
     onFilesSelected: (List<FilePickerResult>?) -> Unit
 ): () -> Unit {
     val context = LocalContext.current
@@ -185,4 +189,45 @@ class AndroidDownloadDirProvider(
         if (!dir.exists()) dir.mkdirs()
         return dir.absolutePath
     }
+}
+
+class AndroidKeyFileSaveProvider(
+    private val context: Context
+) : KeyFileSaveProvider {
+    override suspend fun saveKeyFile(uri: String): String {
+        val destFile = File(context.filesDir, "key_${System.currentTimeMillis()}")
+        // TODO error here
+        if (destFile.exists()) {
+            destFile.delete()
+        }
+        context.contentResolver.openInputStream(uri.toUri())?.use { input ->
+            FileOutputStream(destFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        return destFile.path
+    }
+}
+
+@Composable
+actual fun rememberSingleFilePicker(onFileSelected: (LocalFile?) -> Unit): () -> Unit {
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) {
+            onFileSelected(null)
+            return@rememberLauncherForActivityResult
+        }
+        val fileName = getFileNameFromUri(context, uri)
+        onFileSelected(
+            LocalFile(
+                name = fileName,
+                path = uri.toString()
+            )
+        )
+    }
+    return { launcher.launch(arrayOf("*/*")) }
 }

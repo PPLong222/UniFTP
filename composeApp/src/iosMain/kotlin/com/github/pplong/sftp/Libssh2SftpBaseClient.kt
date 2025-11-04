@@ -97,11 +97,11 @@ open class Libssh2SftpBaseClient: IBaseFTPClient {
 
             // Authenticate with password
             val password = config.password ?: ""
-            val usernameLen = config.username.length.toUInt()
+            val usernameLen = config.user.length.toUInt()
             val passwordLen = password.length.toUInt()
             if (libssh2_userauth_password_ex(
                     session,
-                    config.username,
+                    config.user,
                     usernameLen,
                     password,
                     passwordLen,

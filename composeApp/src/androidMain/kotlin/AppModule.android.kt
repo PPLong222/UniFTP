@@ -1,5 +1,7 @@
 import com.github.pplong.core.api.AndroidDownloadDirProvider
+import com.github.pplong.core.api.AndroidKeyFileSaveProvider
 import com.github.pplong.core.api.DownloadDirProvider
+import com.github.pplong.core.api.KeyFileSaveProvider
 import com.github.pplong.feat.transfer.AndroidTransferManager
 import com.github.pplong.feat.transfer.ProgressMonitor
 import com.github.pplong.feat.transfer.TransferWorker
@@ -25,4 +27,6 @@ actual fun platformModule(): Module = module {
     worker { TransferWorker(get(), get(), get<AppDatabase>().getTransferTaskDao()) }
 
     single<DownloadDirProvider> { AndroidDownloadDirProvider(androidContext()) }
+
+    single<KeyFileSaveProvider> { AndroidKeyFileSaveProvider(androidContext()) }
 }

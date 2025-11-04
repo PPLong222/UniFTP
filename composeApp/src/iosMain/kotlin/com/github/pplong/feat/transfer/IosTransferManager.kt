@@ -210,7 +210,7 @@ class IosTransferManager : KoinComponent {
             val config = FTPConfig(
                 host = server.host,
                 port = server.port,
-                username = server.user,
+                user = server.user,
                 password = server.password
             )
 

@@ -2,6 +2,7 @@ package com.github.pplong.feat.home.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.github.pplong.core.api.DownloadDirProvider
+import com.github.pplong.core.api.KeyFileSaveProvider
 import com.github.pplong.core.arch.mvi.BaseViewModel
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.feat.home.EditServerNicknameState
@@ -16,8 +17,9 @@ import com.github.pplong.feat.home.ui.FTPServerItem
 import com.github.pplong.feat.home.ui.toFTPServer
 import com.github.pplong.feat.home.ui.toFTPServerItem
 import com.github.pplong.sftp.FTPClientManager
-import com.github.pplong.sftp.FTPGlobalSingleton
 import com.github.pplong.sftp.def.FTPConfig
+import com.github.pplong.sftp.def.FTPPasswordPass
+import com.github.pplong.sftp.def.FTPPublicKeyPass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.launch
@@ -25,7 +27,8 @@ import kotlinx.coroutines.withContext
 
 class HomeViewModel(
     private val ftpServerDao: FTPServerDao,
-    private val downloadDirProvider: DownloadDirProvider
+    private val downloadDirProvider: DownloadDirProvider,
+    private val keyFileSaveProvider: KeyFileSaveProvider
 ) : BaseViewModel<HomeUiState, HomeUiIntent, HomeUiEffect>() {
 
     private var defaultDownloadDir: String = ""
@@ -51,6 +54,60 @@ class HomeViewModel(
             is HomeUiIntent.OnChangeServerInfo -> onChangeServerInfo(intent.editServer)
             HomeUiIntent.SaveServer -> saveServer()
             is HomeUiIntent.Connect -> connect(intent.server)
+            is HomeUiIntent.AddServerUiIntent -> handleAddServerUiIntent(intent)
+        }
+    }
+
+    private fun handleAddServerUiIntent(intent: HomeUiIntent.AddServerUiIntent) {
+        when (intent) {
+            is HomeUiIntent.AddServerUiIntent.CheckParaphraseBox -> {
+                setState {
+                    copy(
+                        editServerState = editServerState.copy(
+                            server = editServerState.server.copy(
+                                usePhrase = intent.checked
+                            )
+                        )
+                    )
+                }
+            }
+
+            is HomeUiIntent.AddServerUiIntent.CheckPublicKeyBox -> {
+                setState {
+                    copy(
+                        editServerState = editServerState.copy(
+                            server = editServerState.server.copy(
+                                usePhrase = intent.checked
+                            )
+                        )
+                    )
+                }
+            }
+
+            is HomeUiIntent.AddServerUiIntent.ParaphraseChanged -> {
+                setState {
+                    copy(
+                        editServerState = editServerState.copy(
+                            server = editServerState.server.copy(
+                                paraphrase = intent.paraphrase
+                            )
+                        )
+                    )
+                }
+            }
+
+            is HomeUiIntent.AddServerUiIntent.KeyFileSelected -> {
+                setState {
+                    copy(
+                        editServerState = editServerState.copy(
+                            server = editServerState.server.copy(
+                                publicKeyUri = intent.uri,
+                                keyName = intent.fileName
+                            )
+                        )
+                    )
+                }
+            }
         }
     }
 
@@ -140,13 +197,21 @@ class HomeViewModel(
             copy(editServerState = editServerState.copy(status = CommonRequestStatus.REQUESTING))
         }
 
+        val server = uiState.value.editServerState.server
+
         viewModelScope.launch(Dispatchers.IO) {
+            val pass = if (server.authByPublicKey) {
+                val appKeyFileUri = keyFileSaveProvider.saveKeyFile(server.publicKeyUri)
+                FTPPublicKeyPass(appKeyFileUri, server.paraphrase)
+            } else {
+                FTPPasswordPass(server.password)
+            }
             val tempManager = FTPClientManager(
                 FTPConfig(
-                    host = uiState.value.editServerState.server.host,
-                    username = uiState.value.editServerState.server.user,
-                    port = uiState.value.editServerState.server.port,
-                    password = uiState.value.editServerState.server.password
+                    server.host,
+                    server.port,
+                    server.user,
+                    pass
                 )
             )
 
@@ -188,15 +253,17 @@ class HomeViewModel(
     }
 
     private fun connect(server: FTPServerItem) {
-        val tempManager = FTPClientManager(
-            FTPConfig(
-                host = server.host,
-                username = server.user,
-                port = server.port,
-                password = server.password
-            )
-        )
-        FTPGlobalSingleton.manager = tempManager
-        sendEffect { HomeUiEffect.NavigateToBrowser(server) }
+//        val tempManager = FTPClientManager(
+//            FTPConfig(
+//                host = server.host,
+//                user = server.user,
+//                port = server.port,
+//                password = server.password,
+//                pass = FTPPasswordPass(uiState.value.editServerState.server.password)
+//
+//            )
+//        )
+//        FTPGlobalSingleton.manager = tempManager
+//        sendEffect { HomeUiEffect.NavigateToBrowser(server) }
     }
 }

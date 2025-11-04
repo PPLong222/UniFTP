@@ -3,16 +3,34 @@ package com.github.pplong.core.api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.interop.LocalUIViewController
-import kotlinx.cinterop.*
-import platform.Foundation.*
-import platform.PhotosUI.*
-import platform.UIKit.*
-import platform.UniformTypeIdentifiers.UTType
+import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSData
+import platform.Foundation.NSDate
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSFileModificationDate
+import platform.Foundation.NSFileSize
+import platform.Foundation.NSNumber
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSURL
+import platform.Foundation.NSUUID
+import platform.Foundation.dataWithContentsOfFile
+import platform.Foundation.timeIntervalSince1970
+import platform.Foundation.writeToFile
+import platform.PhotosUI.PHPickerConfiguration
+import platform.PhotosUI.PHPickerFilter
+import platform.PhotosUI.PHPickerResult
+import platform.PhotosUI.PHPickerViewController
+import platform.PhotosUI.PHPickerViewControllerDelegateProtocol
+import platform.UIKit.UIApplication
+import platform.UIKit.UIDocumentPickerDelegateProtocol
+import platform.UIKit.UIDocumentPickerMode
+import platform.UIKit.UIDocumentPickerViewController
+import platform.UIKit.UIViewController
+import platform.darwin.DISPATCH_TIME_FOREVER
 import platform.darwin.NSObject
 import platform.darwin.dispatch_semaphore_create
 import platform.darwin.dispatch_semaphore_signal
 import platform.darwin.dispatch_semaphore_wait
-import platform.darwin.DISPATCH_TIME_FOREVER
 
 // Global storage to keep delegates alive (prevent garbage collection)
 // iOS UI operations are on main thread, so no additional synchronization needed
@@ -87,7 +105,7 @@ actual fun rememberMediaPicker(
  */
 @OptIn(ExperimentalForeignApi::class)
 @Composable
-actual fun rememberFilePicker(
+actual fun rememberMultipleFilePicker(
     onFilesSelected: (List<FilePickerResult>?) -> Unit
 ): () -> Unit {
     // Create and remember the delegate to keep it alive

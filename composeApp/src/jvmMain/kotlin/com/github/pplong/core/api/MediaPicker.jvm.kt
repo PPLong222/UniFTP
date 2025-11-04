@@ -1,14 +1,12 @@
 package com.github.pplong.core.api
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.FileDialog
 import java.awt.Frame
-import java.io.File
 
 /**
  * JVM implementation of media picker
@@ -58,7 +56,7 @@ actual fun rememberMediaPicker(
  * JVM implementation of file picker using FileDialog
  */
 @Composable
-actual fun rememberFilePicker(
+actual fun rememberMultipleFilePicker(
     onFilesSelected: (List<FilePickerResult>?) -> Unit
 ): () -> Unit {
     val scope = rememberCoroutineScope()

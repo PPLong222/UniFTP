@@ -17,6 +17,7 @@ import com.github.pplong.sftp.AndroidUploadCallbackFactory
 import com.github.pplong.sftp.FTPClientManager
 import com.github.pplong.sftp.SFTPClientFactory
 import com.github.pplong.sftp.def.FTPConfig
+import com.github.pplong.sftp.def.FTPPasswordPass
 
 /**
  * WorkManager Worker for background file transfers
@@ -120,8 +121,8 @@ class TransferWorker(
         val config = FTPConfig(
             host = server.host,
             port = server.port,
-            username = server.user,
-            password = server.password
+            user = server.user,
+            pass = FTPPasswordPass(server.password)
         )
 
         // TODO: try to use manager already exist
@@ -218,8 +219,8 @@ class TransferWorker(
         val config = FTPConfig(
             host = server.host,
             port = server.port,
-            username = server.user,
-            password = server.password
+            user = server.user,
+            pass = FTPPasswordPass(server.password)
         )
 
         val manager = FTPClientManager(config)

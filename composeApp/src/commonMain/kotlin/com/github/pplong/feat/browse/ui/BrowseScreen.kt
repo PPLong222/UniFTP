@@ -22,8 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.github.pplong.core.api.rememberFilePicker
 import com.github.pplong.core.api.rememberMediaPicker
+import com.github.pplong.core.api.rememberMultipleFilePicker
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.feat.browse.BrowseDialogState
 import com.github.pplong.feat.browse.BrowseUiEffect
@@ -50,7 +50,7 @@ fun BrowseScreen(
     var transferPanelVisible by remember { mutableStateOf(false) }
 
     // File picker for upload
-    val filePicker = rememberFilePicker { results ->
+    val filePicker = rememberMultipleFilePicker { results ->
         results?.let { fileList ->
             // Convert FilePickerResult to upload format (uri, fileName)
             viewModel.sendIntent(UploadFiles(fileList, false))

@@ -31,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.github.pplong.core.api.rememberDirectoryPicker
+import com.github.pplong.core.api.rememberSingleFilePicker
 import com.github.pplong.core.def.CommonRequestStatus
 import com.github.pplong.core.def.ServerPortInfo
+import com.github.pplong.core.ifNotNull
 import com.github.pplong.core.widgets.PasswordTextField
 import com.github.pplong.feat.home.EditServerNicknameState
 import com.github.pplong.feat.home.EditServerState
@@ -41,9 +43,11 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import uniftp.composeapp.generated.resources.Res
+import uniftp.composeapp.generated.resources.auth_by_public_key
 import uniftp.composeapp.generated.resources.congratulations
 import uniftp.composeapp.generated.resources.ic_file_open
 import uniftp.composeapp.generated.resources.ic_thumb_up
+import uniftp.composeapp.generated.resources.key_file_name
 import uniftp.composeapp.generated.resources.network_error_tip
 import uniftp.composeapp.generated.resources.next
 import uniftp.composeapp.generated.resources.nickname
@@ -53,6 +57,7 @@ import uniftp.composeapp.generated.resources.port
 import uniftp.composeapp.generated.resources.test_again
 import uniftp.composeapp.generated.resources.test_connectivity
 import uniftp.composeapp.generated.resources.use_default_download_dir
+import uniftp.composeapp.generated.resources.use_paraphrase
 import uniftp.composeapp.generated.resources.user
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,22 +124,56 @@ internal fun EditFTPServerBottomSheetContent(
                 .fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
-        PasswordTextField(
-            text = editServerState.server.password,
-            onValueChange = {
-                onIntent(
-                    HomeUiIntent.OnChangeServerInfo(
-                        editServerState.server.copy(
-                            password = it
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(Res.string.auth_by_public_key))
+            Spacer(Modifier.weight(1f))
+            Switch(
+                checked = editServerState.server.authByPublicKey,
+                onCheckedChange = { checked ->
+                    onIntent(
+                        HomeUiIntent.OnChangeServerInfo(
+                            editServerState.server.copy(
+                                authByPublicKey = checked
+                            )
                         )
                     )
-                )
-            },
-            labelString = "Password",
-            modifier = Modifier
-                .fillMaxWidth()
-        )
+                }
+            )
+        }
         Spacer(Modifier.height(12.dp))
+        AnimatedContent(editServerState.server.authByPublicKey) { targetState ->
+            when (targetState) {
+                true -> {
+                    EditFTPServerPublicKeyPanel(
+                        keyName = editServerState.server.keyName,
+                        usePhrase = editServerState.server.usePhrase,
+                        phrase = editServerState.server.paraphrase,
+                        onIntent = onIntent
+                    )
+                }
+
+                false -> {
+                    PasswordTextField(
+                        text = editServerState.server.password,
+                        onValueChange = {
+                            onIntent(
+                                HomeUiIntent.OnChangeServerInfo(
+                                    editServerState.server.copy(
+                                        password = it
+                                    )
+                                )
+                            )
+                        },
+                        labelString = "Password",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         Row {
             OutlinedTextField(
                 value = editServerState.server.user,
@@ -201,6 +240,7 @@ internal fun EditFTPServerBottomSheetContent(
 
                 CommonRequestStatus.INITIAL ->
                     Button(
+                        enabled = editServerState.server.testConnectivityEnabled,
                         onClick = { onIntent(HomeUiIntent.TestConnectivity) },
                     ) {
                         Text(stringResource(Res.string.test_connectivity))
@@ -233,6 +273,74 @@ internal fun EditFTPServerBottomSheetContent(
                 }
             }
         }
+    }
+}
+
+
+@Composable
+fun EditFTPServerPublicKeyPanel(
+    keyName: String,
+    usePhrase: Boolean,
+    phrase: String,
+    onIntent: (HomeUiIntent.AddServerUiIntent) -> Unit
+) {
+    val filePicker = rememberSingleFilePicker { uri ->
+        ifNotNull(uri?.name, uri?.path) { name, path ->
+            onIntent(
+                HomeUiIntent.AddServerUiIntent.KeyFileSelected(path, name)
+            )
+        }
+    }
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(
+                    Res.string.key_file_name,
+                    keyName
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                filePicker.invoke()
+            }, shape = RoundedCornerShape(size = 8.dp)) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_file_open),
+                    contentDescription = null
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(Res.string.use_paraphrase))
+            Spacer(Modifier.weight(1f))
+            Switch(
+                checked = usePhrase,
+                onCheckedChange = { checked ->
+                    onIntent(HomeUiIntent.AddServerUiIntent.CheckParaphraseBox(checked))
+                }
+            )
+        }
+
+        AnimatedContent(usePhrase) { targetState ->
+            if (targetState) {
+                PasswordTextField(
+                    text = phrase,
+                    onValueChange = {
+                        onIntent(
+                            HomeUiIntent.AddServerUiIntent.ParaphraseChanged(it)
+                        )
+                    },
+                    labelString = "Paraphrase",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                )
+            }
+        }
+
     }
 }
 

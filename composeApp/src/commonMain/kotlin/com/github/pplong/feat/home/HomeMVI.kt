@@ -15,7 +15,7 @@ data class EditServerState(
     val error: EditServerErrorState = EditServerErrorState()
 ) {
     val isSaveEnabled =
-        error.noError && ((!server.useDefaultDownloadDir && server.downloadDir != null) || server.useDefaultDownloadDir)
+        error.noError && server.saveEnabled
 }
 
 data class EditServerErrorState(
@@ -47,6 +47,13 @@ sealed class HomeUiIntent : UiIntent {
     data object SaveServer : HomeUiIntent()
     data object NextToConfigure : HomeUiIntent()
     data class OnChangeServerInfo(val editServer: EditFTPServerItem) : HomeUiIntent()
+
+    sealed class AddServerUiIntent : HomeUiIntent() {
+        data class CheckPublicKeyBox(val checked: Boolean) : AddServerUiIntent()
+        data class CheckParaphraseBox(val checked: Boolean) : AddServerUiIntent()
+        data class ParaphraseChanged(val paraphrase: String) : AddServerUiIntent()
+        data class KeyFileSelected(val uri: String, val fileName: String) : AddServerUiIntent()
+    }
 }
 
 sealed class HomeUiEffect : UiEffect {

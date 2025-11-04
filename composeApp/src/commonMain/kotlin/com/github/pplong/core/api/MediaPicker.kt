@@ -1,6 +1,7 @@
 package com.github.pplong.core.api
 
 import androidx.compose.runtime.Composable
+import com.github.pplong.core.def.LocalFile
 
 /**
  * File information for upload
@@ -28,8 +29,13 @@ expect fun rememberMediaPicker(
  * Supports multiple file selection.
  */
 @Composable
-expect fun rememberFilePicker(
+expect fun rememberMultipleFilePicker(
     onFilesSelected: (List<FilePickerResult>?) -> Unit
+): () -> Unit
+
+@Composable
+expect fun rememberSingleFilePicker(
+    onFileSelected: (LocalFile?) -> Unit
 ): () -> Unit
 
 /**
@@ -43,4 +49,8 @@ expect fun rememberDirectoryPicker(
 
 interface DownloadDirProvider {
     suspend fun getDefaultDownloadDir(): String
+}
+
+interface KeyFileSaveProvider {
+    suspend fun saveKeyFile(uri: String): String
 }

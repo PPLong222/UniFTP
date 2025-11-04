@@ -7,7 +7,7 @@
     <string name="test_again">Test Again</string>
     <string name="congratulations">Congratulations!</string>
     <string name="network_error_tip">Please check the network or ftp info.</string>
-    <string name="nickname">Nickname</string>$s
+    <string name="nickname">Nickname</string>
     <string name="path_with_placeholder">Path: %1$s</string>
     <string name="user_with_host">%1$s@%2$s</string>
     <string name="select">Select</string>
@@ -33,6 +33,9 @@
 
     <string name="nickname_already_exist">Nickname already exists</string>
     <string name="use_default_download_dir">Use Default Download Folder</string>
+    <string name="auth_by_public_key">Auth by Public Key</string>
+    <string name="use_paraphrase">Use Paraphrase</string>
+    <string name="key_file_name">Key File: %1$s</string>
 
     <!--Dialog-->
     <string name="remove_dialog_tip">Are you sure to remove these %1$s files?</string>
